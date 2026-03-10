@@ -792,11 +792,11 @@ let lastCorrectTeam = -1;  // Track who picks next
 let fjTimerInterval = null;
 
 // ── TURN / ICE configuration ──────────────────────────────
-// Free TURN relay via Metered.ca  (https://www.metered.ca)
-// Sign up free → create app → paste API key below.
-const METERED_API_KEY = '';  // ← paste your Metered API key here
+// TURN credentials are fetched from a Cloudflare Worker proxy
+// that holds the Metered.ca API key as a secret.
+// See worker/index.js for the proxy source.
+const TURN_WORKER_URL = '';  // ← Your Cloudflare Worker URL (e.g. https://baby-jeopardy-turn.you.workers.dev)
 
-// Fallback STUN-only config (used if TURN credentials aren't available)
 const STUN_ONLY = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:global.stun.twilio.com:3478' },
@@ -805,18 +805,20 @@ const STUN_ONLY = [
 let PEER_CONFIG = { debug: 1, config: { iceServers: STUN_ONLY } };
 
 async function loadTurnCredentials() {
-  if (!METERED_API_KEY) {
-    console.warn('No TURN API key configured — using STUN only. P2P may fail on restrictive networks.');
+  if (!TURN_WORKER_URL) {
+    console.warn('No TURN worker URL configured — using STUN only. P2P may fail on restrictive networks.');
     return;
   }
   try {
-    const resp = await fetch(
-      `https://baby-jeopardy.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
-    );
+    const resp = await fetch(TURN_WORKER_URL);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const servers = await resp.json();
-    PEER_CONFIG = { debug: 1, config: { iceServers: [...STUN_ONLY, ...servers] } };
-    console.log('TURN credentials loaded:', servers.length, 'relay servers');
+    if (servers.length) {
+      PEER_CONFIG = { debug: 1, config: { iceServers: [...STUN_ONLY, ...servers] } };
+      console.log('TURN credentials loaded:', servers.length, 'relay servers');
+    } else {
+      console.warn('TURN worker returned no servers, using STUN only');
+    }
   } catch (e) {
     console.warn('Failed to load TURN credentials, falling back to STUN only:', e.message);
   }
