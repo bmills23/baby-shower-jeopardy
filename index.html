@@ -124,8 +124,9 @@ html, body {
   outline: none; transition: border-color 0.2s;
 }
 .input-group input:focus, .input-group select:focus { border-color: var(--accent-blue); }
-#connection-status {
+#connection-status, #host-connection-status {
   padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+  text-align: center;
 }
 .status-connecting { background: rgba(251,191,36,0.2); color: #fbbf24; }
 .status-connected { background: rgba(52,211,153,0.2); color: var(--correct); }
@@ -418,6 +419,7 @@ html, body {
   <div class="room-code-display" id="room-code-display"></div>
   <div id="qr-container"></div>
   <div class="room-url" id="room-url" onclick="copyRoomUrl()" title="Tap to copy"></div>
+  <div id="host-connection-status" class="status-connecting" style="margin: 8px 0; font-size: 0.85rem;">Setting up room...</div>
   <div class="team-setup">
     <div style="color: var(--text-dim); font-size: 0.9rem;">Number of Teams</div>
     <div class="team-count-control">
@@ -447,6 +449,7 @@ html, body {
   </div>
   <button class="btn btn-join" onclick="ensureAudio(); joinGame()">Connect</button>
   <div id="connection-status" class="hidden"></div>
+  <button id="retry-btn" class="btn btn-outline btn-small hidden" onclick="joinRetries=0; attemptJoin(roomCode);" style="margin-top:4px">Retry Connection</button>
   <span class="back-link" onclick="showScreen('welcome')">Back</span>
 </div>
 
@@ -788,6 +791,20 @@ let questionsRemaining = 30;
 let lastCorrectTeam = -1;  // Track who picks next
 let fjTimerInterval = null;
 
+// PeerJS shared configuration
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+    ]
+  }
+};
+
 // Player state
 let playerName = '';
 let playerTeam = -1;
@@ -972,26 +989,40 @@ let hostRetries = 0;
 function initHostPeer() {
   if (peer) { try { peer.destroy(); } catch (e) {} }
   const hostId = `bsj-host-${roomCode.toLowerCase()}`;
-  peer = new Peer(hostId);
+  peer = new Peer(hostId, PEER_CONFIG);
 
   peer.on('open', id => {
     hostRetries = 0;
     console.log('Host peer open:', id);
+    document.getElementById('host-connection-status').textContent = 'Room is live — waiting for players';
+    document.getElementById('host-connection-status').className = 'status-connected';
   });
 
   peer.on('connection', conn => {
+    console.log('Incoming player connection:', conn.peer);
     conn.on('open', () => {
+      console.log('Player connection open:', conn.peer);
       conn.on('data', data => handlePlayerMessage(conn, data));
     });
     conn.on('close', () => {
+      console.log('Player disconnected:', conn.peer);
       delete connections[conn.peer];
       renderTeamRoster();
     });
+    conn.on('error', err => {
+      console.warn('Player connection error:', conn.peer, err);
+    });
+  });
+
+  peer.on('disconnected', () => {
+    console.warn('Host lost connection to signaling server, reconnecting...');
+    document.getElementById('host-connection-status').textContent = 'Reconnecting...';
+    document.getElementById('host-connection-status').className = 'status-connecting';
+    peer.reconnect();
   });
 
   peer.on('error', err => {
-    console.warn('Host peer error:', err);
-    // If ID is taken, try again with a different code (max 3 retries)
+    console.warn('Host peer error:', err.type, err);
     if (err.type === 'unavailable-id' && hostRetries < 3) {
       hostRetries++;
       roomCode = generateRoomCode();
@@ -1003,6 +1034,9 @@ function initHostPeer() {
       initHostPeer();
     } else if (err.type === 'unavailable-id') {
       alert('Could not create a game room. Try refreshing the page.');
+    } else {
+      document.getElementById('host-connection-status').textContent = 'Connection error — players may not be able to join';
+      document.getElementById('host-connection-status').className = 'status-error';
     }
   });
 }
@@ -1064,29 +1098,59 @@ function showJoin() {
   showScreen('player-lobby');
 }
 
+let joinTimeout = null;
+let joinRetries = 0;
+const MAX_JOIN_RETRIES = 3;
+
 function joinGame() {
   const code = document.getElementById('join-code').value.trim().toUpperCase();
   playerName = document.getElementById('player-name').value.trim();
   if (!code || !playerName) return;
 
   roomCode = code;
+  joinRetries = 0;
+  attemptJoin(code);
+}
+
+function attemptJoin(code) {
   const statusEl = document.getElementById('connection-status');
+  const retryBtn = document.getElementById('retry-btn');
+  if (retryBtn) retryBtn.classList.add('hidden');
   statusEl.className = 'status-connecting';
-  statusEl.textContent = 'Connecting...';
+  statusEl.textContent = joinRetries > 0
+    ? `Retrying... (attempt ${joinRetries + 1}/${MAX_JOIN_RETRIES + 1})`
+    : 'Connecting to signaling server...';
   statusEl.classList.remove('hidden');
 
-  peer = new Peer();
-  peer.on('open', () => {
-    const hostId = `bsj-host-${code.toLowerCase()}`;
-    const conn = peer.connect(hostId);
+  // Clean up previous peer
+  if (peer) { try { peer.destroy(); } catch (e) {} }
+  if (joinTimeout) clearTimeout(joinTimeout);
 
-    const timeout = setTimeout(() => {
+  // Outer timeout covers the ENTIRE flow: signaling + peer connection
+  joinTimeout = setTimeout(() => {
+    console.warn('Join timed out');
+    if (peer) { try { peer.destroy(); } catch (e) {} }
+    if (joinRetries < MAX_JOIN_RETRIES) {
+      joinRetries++;
+      attemptJoin(code);
+    } else {
       statusEl.className = 'status-error';
-      statusEl.textContent = 'Could not find host. Check the code and try again.';
-    }, 8000);
+      statusEl.textContent = 'Could not connect. Make sure the host game is running.';
+      if (retryBtn) retryBtn.classList.remove('hidden');
+    }
+  }, 10000);
+
+  peer = new Peer(undefined, PEER_CONFIG);
+
+  peer.on('open', () => {
+    console.log('Player peer open, connecting to host...');
+    statusEl.textContent = 'Found server, connecting to host...';
+    const hostId = `bsj-host-${code.toLowerCase()}`;
+    const conn = peer.connect(hostId, { reliable: true });
 
     conn.on('open', () => {
-      clearTimeout(timeout);
+      clearTimeout(joinTimeout);
+      console.log('Connected to host!');
       conn.send({ type: 'join', name: playerName });
       statusEl.className = 'status-connected';
       statusEl.textContent = 'Connected!';
@@ -1097,21 +1161,47 @@ function joinGame() {
         statusEl.className = 'status-error';
         statusEl.textContent = 'Disconnected from host.';
         statusEl.classList.remove('hidden');
+        if (retryBtn) retryBtn.classList.remove('hidden');
       });
 
       window.hostConn = conn;
     });
 
     conn.on('error', err => {
-      clearTimeout(timeout);
-      statusEl.className = 'status-error';
-      statusEl.textContent = 'Connection failed. Is the host running?';
+      console.warn('Connection to host error:', err);
+      // Don't clear the outer timeout — let it handle retry
     });
   });
 
+  peer.on('disconnected', () => {
+    console.warn('Player lost signaling connection');
+    // Don't clear the outer timeout — let it handle retry
+  });
+
   peer.on('error', err => {
-    statusEl.className = 'status-error';
-    statusEl.textContent = 'Connection failed. Check the room code.';
+    console.warn('Player peer error:', err.type, err);
+    clearTimeout(joinTimeout);
+    if (err.type === 'peer-unavailable') {
+      // Host peer ID not found on signaling server
+      if (joinRetries < MAX_JOIN_RETRIES) {
+        joinRetries++;
+        statusEl.textContent = 'Host not found, retrying...';
+        setTimeout(() => attemptJoin(code), 1500);
+      } else {
+        statusEl.className = 'status-error';
+        statusEl.textContent = 'Host not found. Is the game room open?';
+        if (retryBtn) retryBtn.classList.remove('hidden');
+      }
+    } else {
+      if (joinRetries < MAX_JOIN_RETRIES) {
+        joinRetries++;
+        attemptJoin(code);
+      } else {
+        statusEl.className = 'status-error';
+        statusEl.textContent = 'Connection failed. Check the room code and try again.';
+        if (retryBtn) retryBtn.classList.remove('hidden');
+      }
+    }
   });
 }
 
