@@ -1,14 +1,3 @@
-/**
- * Cloudflare Worker — TURN credential proxy
- *
- * Fetches temporary TURN relay credentials from Metered.ca
- * without exposing the API key in client-side code.
- *
- * Environment secrets (set in Cloudflare dashboard):
- *   METERED_APP  — your Metered app name (e.g. "baby-jeopardy")
- *   METERED_KEY  — your Metered API key
- */
-
 const ALLOWED_ORIGINS = [
   'https://bmills23.github.io',
   'http://localhost',
@@ -27,29 +16,35 @@ export default {
       'Content-Type': 'application/json',
     };
 
-    // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers });
     }
 
-    if (request.method !== 'GET') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405, headers,
-      });
+    // Bail early if secrets aren't configured
+    if (!env.METERED_APP || !env.METERED_KEY) {
+      return new Response(JSON.stringify({
+        error: 'Missing secrets',
+        hasApp: !!env.METERED_APP,
+        hasKey: !!env.METERED_KEY,
+      }), { status: 500, headers });
     }
 
     try {
       const url = `https://${env.METERED_APP}.metered.live/api/v1/turn/credentials?apiKey=${env.METERED_KEY}`;
-      const resp = await fetch(url, {
-        cf: { cacheTtl: 300 }, // cache at edge for 5 min to limit Metered API calls
-      });
-      if (!resp.ok) throw new Error(`Metered returned ${resp.status}`);
-      const creds = await resp.json();
+      const resp = await fetch(url);
+      const body = await resp.text();
 
-      return new Response(JSON.stringify(creds), { headers });
+      if (!resp.ok) {
+        return new Response(JSON.stringify({
+          error: 'Metered API error',
+          status: resp.status,
+          body: body.substring(0, 200),
+        }), { status: 502, headers });
+      }
+
+      return new Response(body, { headers });
     } catch (e) {
-      // Return empty array so the game falls back to STUN-only
-      return new Response(JSON.stringify([]), {
+      return new Response(JSON.stringify({ error: e.message }), {
         status: 502, headers,
       });
     }

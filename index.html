@@ -390,6 +390,19 @@ html, body {
 .fade-in { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ===== TUTORIAL ===== */
+.tutorial-highlight {
+  position: relative;
+  z-index: 10000;
+  box-shadow: 0 0 0 4px var(--gold), 0 0 20px rgba(251,191,36,0.4);
+  border-radius: 8px;
+  animation: tutorialPulse 1.5s ease-in-out infinite;
+}
+@keyframes tutorialPulse {
+  0%, 100% { box-shadow: 0 0 0 4px var(--gold), 0 0 20px rgba(251,191,36,0.4); }
+  50% { box-shadow: 0 0 0 6px var(--gold), 0 0 30px rgba(251,191,36,0.6); }
+}
+
 @media (max-width: 768px) {
   .board-grid { gap: 4px; }
   .category-header { font-size: clamp(0.55rem, 2.2vw, 0.85rem); padding: 6px 3px; }
@@ -410,6 +423,28 @@ html, body {
   <div class="btn-group">
     <button class="btn btn-host" onclick="ensureAudio(); setupHost()">Host Game</button>
     <button class="btn btn-join" onclick="ensureAudio(); showJoin()">Join Game</button>
+  </div>
+  <button class="btn btn-outline btn-small" onclick="ensureAudio(); startTutorial()" style="margin-top:8px; border-color:var(--gold); color:var(--gold);">Practice Tutorial</button>
+</div>
+
+<!-- ==================== TUTORIAL OVERLAY ==================== -->
+<div id="tutorial-overlay" style="display:none; position:fixed; inset:0; z-index:9999;">
+  <div id="tutorial-backdrop" style="position:absolute; inset:0; background:rgba(0,0,0,0.7);"></div>
+  <div id="tutorial-card" style="
+    position:absolute; bottom:24px; left:16px; right:16px;
+    background:var(--card); border:2px solid var(--gold); border-radius:16px;
+    padding:20px; z-index:10000; max-width:500px; margin:0 auto;
+    box-shadow: 0 0 40px rgba(251,191,36,0.3);
+  ">
+    <div style="font-size:0.7rem; color:var(--gold); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">
+      Tutorial <span id="tutorial-step-num">1</span>/<span id="tutorial-step-total">7</span>
+    </div>
+    <div id="tutorial-title" style="font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:8px;"></div>
+    <div id="tutorial-body" style="font-size:0.9rem; color:var(--text-dim); line-height:1.5; margin-bottom:16px;"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn btn-small btn-outline" onclick="endTutorial()" id="tutorial-skip" style="font-size:0.8rem;">Skip</button>
+      <button class="btn btn-small" onclick="nextTutorialStep()" id="tutorial-next" style="background:var(--gold);color:#1a1a2e;font-size:0.8rem;">Next</button>
+    </div>
   </div>
 </div>
 
@@ -481,6 +516,7 @@ html, body {
     <button class="btn btn-small" style="background:var(--accent-blue);color:#fff" onclick="openBuzzer()">Open Buzzers</button>
     <button class="btn btn-small" style="background:var(--correct);color:#1a1a2e" onclick="markCorrect()" id="btn-correct">Correct</button>
     <button class="btn btn-small" style="background:var(--wrong);color:#fff" onclick="markWrong()" id="btn-wrong">Wrong</button>
+    <button class="btn btn-small" style="background:var(--accent-blue);color:#fff;display:none" onclick="undoScore()" id="btn-undo">Undo</button>
     <button class="btn btn-small btn-outline" onclick="revealAnswer()">Show Answer</button>
     <button class="btn btn-small btn-outline" onclick="closeQuestion()">Back to Board</button>
   </div>
@@ -1563,10 +1599,12 @@ function selectCell(col, row) {
 
   if (isDailyDouble) {
     showDailyDouble();
+    tutorialActionCompleted('daily-double');
     return;
   }
 
   showQuestion();
+  tutorialActionCompleted('question-opened');
 }
 
 function showQuestion() {
@@ -1641,9 +1679,13 @@ function renderBuzzQueue() {
   el.innerHTML = buzzQueue.map(b => `<div class="buzz-chip">${esc(b.name)}</div>`).join('');
 }
 
+let lastScoreChange = null; // { teamIndex, delta } for undo
+
 function markCorrect() {
   if (activeTeamIndex < 0) return;
-  teams[activeTeamIndex].score += (ddWager > 0 ? ddWager : currentValue);
+  const delta = ddWager > 0 ? ddWager : currentValue;
+  teams[activeTeamIndex].score += delta;
+  lastScoreChange = { teamIndex: activeTeamIndex, delta };
   lastCorrectTeam = activeTeamIndex;
   updateScoreboard();
   playCorrect();
@@ -1651,15 +1693,24 @@ function markCorrect() {
   ddWager = 0;
   isDailyDouble = false;
   revealAnswer();
+  // Hide Correct/Wrong, show Undo
+  document.getElementById('btn-correct').style.display = 'none';
+  document.getElementById('btn-wrong').style.display = 'none';
+  document.getElementById('btn-undo').style.display = '';
   document.getElementById('host-hint').textContent = 'Click "Back to Board" to continue.';
+  tutorialActionCompleted('score-changed');
 }
 
 function markWrong() {
   if (activeTeamIndex < 0) return;
-  teams[activeTeamIndex].score -= (ddWager > 0 ? ddWager : currentValue);
+  const delta = ddWager > 0 ? ddWager : currentValue;
+  teams[activeTeamIndex].score -= delta;
+  lastScoreChange = { teamIndex: activeTeamIndex, delta: -delta };
   updateScoreboard();
   playWrong();
   highlightScoreCard(activeTeamIndex, 'var(--wrong)');
+  tutorialActionCompleted('score-changed');
+  document.getElementById('btn-undo').style.display = '';
 
   // Daily Double: only one team answers — end the question
   if (isDailyDouble) {
@@ -1689,6 +1740,17 @@ function markWrong() {
   }
 }
 
+function undoScore() {
+  if (!lastScoreChange) return;
+  const { teamIndex, delta } = lastScoreChange;
+  teams[teamIndex].score -= delta;
+  updateScoreboard();
+  highlightScoreCard(teamIndex, 'var(--accent-blue)');
+  document.getElementById('btn-undo').style.display = 'none';
+  document.getElementById('host-hint').textContent = `Undid ${delta > 0 ? '+' : ''}${delta} for ${teams[teamIndex].name}. Back to Board or open buzzers.`;
+  lastScoreChange = null;
+}
+
 function revealAnswer() {
   document.getElementById('q-answer').classList.add('revealed');
 }
@@ -1698,9 +1760,12 @@ function closeQuestion() {
   currentQuestion = null;
   ddWager = 0;
   isDailyDouble = false;
+  lastScoreChange = null;
+  document.getElementById('btn-undo').style.display = 'none';
   broadcast({ type: 'questionDone' });
   showScreen('game-board');
   updateTurnIndicator();
+  tutorialActionCompleted('question-closed');
 
   if (questionsRemaining <= 0) {
     setTimeout(() => {
@@ -1944,6 +2009,146 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// ========================================================
+//  PRACTICE TUTORIAL
+// ========================================================
+let tutorialStep = 0;
+let tutorialActive = false;
+
+const TUTORIAL_STEPS = [
+  {
+    title: 'Welcome to Practice Mode!',
+    body: 'This walkthrough shows you exactly how to host a game. We\'ll use a sample board with fake teams so you can try every button risk-free.',
+    setup() {
+      // Set up a fake game with 3 teams
+      isHost = true;
+      manualMode = true;
+      teamCount = 3;
+      teams = [
+        { name: 'Team Stork', score: 0, color: TEAM_COLORS[0] },
+        { name: 'Team Rattle', score: 0, color: TEAM_COLORS[1] },
+        { name: 'Team Ducky', score: 0, color: TEAM_COLORS[2] },
+      ];
+      dailyDoubles.clear();
+      dailyDoubles.add('2-2'); // one predictable DD for the tutorial
+      questionsRemaining = 30;
+      lastCorrectTeam = -1;
+      buildGameBoard();
+      buildBoard();
+      buildScoreboard();
+      showScreen('game-board');
+    },
+  },
+  {
+    title: 'The Game Board',
+    body: 'This is what your TV/projector shows. 6 categories, 5 values each ($200–$1000). Harder questions are worth more. Try tapping a $200 tile now!',
+    highlight: '#board-grid',
+    waitForAction: 'question-opened',
+  },
+  {
+    title: 'Question Screen',
+    body: 'Read the question aloud to the room. In a real game, you\'d click "Open Buzzers" and players buzz in on their phones. In manual mode (and this tutorial), you pick which team answered. Try tapping a team name below the question!',
+    highlight: '#host-controls',
+  },
+  {
+    title: 'Correct or Wrong?',
+    body: 'After a team answers, tap Correct to award points or Wrong to deduct them. Try marking someone Correct now!',
+    highlight: '#btn-correct, #btn-wrong',
+    waitForAction: 'score-changed',
+  },
+  {
+    title: 'Undo & Scoring',
+    body: 'Made a mistake? The Undo button reverses the last score change. Points show on the scoreboard at the top. Press "Back to Board" to continue to the next question.',
+    highlight: '#btn-undo',
+    waitForAction: 'question-closed',
+  },
+  {
+    title: 'Daily Doubles',
+    body: 'Two random tiles are Daily Doubles — when revealed, one team wagers before answering. Look for the tile at row 3, column 3 on this practice board. Try clicking it!',
+    highlight: '#board-grid',
+    waitForAction: 'daily-double',
+  },
+  {
+    title: 'You\'re Ready!',
+    body: 'That\'s the whole flow! When you host a real game:\n\n\u2022 Share the QR code so guests join on their phones\n\u2022 Players buzz in by tapping their screen\n\u2022 You control scoring from the host screen\n\nHit "Done" to go back to the main menu.',
+    finalStep: true,
+  },
+];
+
+function startTutorial() {
+  tutorialStep = 0;
+  tutorialActive = true;
+  TUTORIAL_STEPS[0].setup();
+  document.getElementById('tutorial-step-total').textContent = TUTORIAL_STEPS.length;
+  showTutorialStep();
+  document.getElementById('tutorial-overlay').style.display = '';
+}
+
+function showTutorialStep() {
+  const step = TUTORIAL_STEPS[tutorialStep];
+  document.getElementById('tutorial-step-num').textContent = tutorialStep + 1;
+  document.getElementById('tutorial-title').textContent = step.title;
+  document.getElementById('tutorial-body').style.whiteSpace = 'pre-line';
+  document.getElementById('tutorial-body').textContent = step.body;
+
+  const nextBtn = document.getElementById('tutorial-next');
+  if (step.finalStep) {
+    nextBtn.textContent = 'Done';
+    document.getElementById('tutorial-skip').style.display = 'none';
+  } else if (step.waitForAction) {
+    nextBtn.textContent = 'Waiting...';
+    nextBtn.disabled = true;
+    nextBtn.style.opacity = '0.4';
+  } else {
+    nextBtn.textContent = 'Next';
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '1';
+    document.getElementById('tutorial-skip').style.display = '';
+  }
+
+  // Highlight target element
+  document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+  if (step.highlight) {
+    document.querySelectorAll(step.highlight).forEach(el => el.classList.add('tutorial-highlight'));
+  }
+}
+
+function tutorialActionCompleted(action) {
+  if (!tutorialActive) return;
+  const step = TUTORIAL_STEPS[tutorialStep];
+  if (step && step.waitForAction === action) {
+    const nextBtn = document.getElementById('tutorial-next');
+    nextBtn.textContent = 'Next';
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '1';
+  }
+}
+
+function nextTutorialStep() {
+  tutorialStep++;
+  if (tutorialStep >= TUTORIAL_STEPS.length) {
+    endTutorial();
+    return;
+  }
+  const step = TUTORIAL_STEPS[tutorialStep];
+  if (step.setup) step.setup();
+  showTutorialStep();
+}
+
+function endTutorial() {
+  tutorialActive = false;
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+  // Reset game state
+  isHost = false;
+  manualMode = false;
+  teams = [];
+  gameBoard = [];
+  connections = {};
+  peer = null;
+  showScreen('welcome');
 }
 
 // ========================================================
