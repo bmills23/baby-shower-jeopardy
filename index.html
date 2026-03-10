@@ -791,19 +791,36 @@ let questionsRemaining = 30;
 let lastCorrectTeam = -1;  // Track who picks next
 let fjTimerInterval = null;
 
-// PeerJS shared configuration
-const PEER_CONFIG = {
-  debug: 1,
-  config: {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' },
-    ]
+// ── TURN / ICE configuration ──────────────────────────────
+// Free TURN relay via Metered.ca  (https://www.metered.ca)
+// Sign up free → create app → paste API key below.
+const METERED_API_KEY = '';  // ← paste your Metered API key here
+
+// Fallback STUN-only config (used if TURN credentials aren't available)
+const STUN_ONLY = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+];
+
+let PEER_CONFIG = { debug: 1, config: { iceServers: STUN_ONLY } };
+
+async function loadTurnCredentials() {
+  if (!METERED_API_KEY) {
+    console.warn('No TURN API key configured — using STUN only. P2P may fail on restrictive networks.');
+    return;
   }
-};
+  try {
+    const resp = await fetch(
+      `https://baby-jeopardy.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
+    );
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const servers = await resp.json();
+    PEER_CONFIG = { debug: 1, config: { iceServers: [...STUN_ONLY, ...servers] } };
+    console.log('TURN credentials loaded:', servers.length, 'relay servers');
+  } catch (e) {
+    console.warn('Failed to load TURN credentials, falling back to STUN only:', e.message);
+  }
+}
 
 // Player state
 let playerName = '';
@@ -909,7 +926,7 @@ function showScreen(id) {
 // ========================================================
 //  HOST SETUP
 // ========================================================
-function setupHost() {
+async function setupHost() {
   isHost = true;
   roomCode = generateRoomCode();
   document.getElementById('room-code-display').textContent = roomCode;
@@ -924,6 +941,9 @@ function setupHost() {
   renderQR(document.getElementById('qr-container'), url);
   renderTeamRoster();
   showScreen('host-lobby');
+
+  // Load TURN credentials before starting peer
+  await loadTurnCredentials();
   initHostPeer();
 }
 
@@ -1102,13 +1122,21 @@ let joinTimeout = null;
 let joinRetries = 0;
 const MAX_JOIN_RETRIES = 3;
 
-function joinGame() {
+async function joinGame() {
   const code = document.getElementById('join-code').value.trim().toUpperCase();
   playerName = document.getElementById('player-name').value.trim();
   if (!code || !playerName) return;
 
   roomCode = code;
   joinRetries = 0;
+
+  // Load TURN credentials before connecting
+  const statusEl = document.getElementById('connection-status');
+  statusEl.className = 'status-connecting';
+  statusEl.textContent = 'Loading network config...';
+  statusEl.classList.remove('hidden');
+  await loadTurnCredentials();
+
   attemptJoin(code);
 }
 
