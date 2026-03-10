@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Baby Shower Jeopardy!</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0e17;
+  --card: #1a1a2e;
+  --card-hover: #252547;
+  --accent-pink: #ff6b9d;
+  --accent-blue: #4ecdc4;
+  --accent-purple: #a855f7;
+  --gold: #ffd700;
+  --correct: #34d399;
+  --wrong: #f87171;
+  --text: #fffffe;
+  --text-dim: #94a1b2;
+  --radius: 12px;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.screen { display: none; height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; }
+.screen.active { display: flex; }
+
+/* ===== WELCOME ===== */
+#welcome {
+  flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+  background: linear-gradient(135deg, #0f0e17 0%, #1a1a2e 50%, #16213e 100%);
+  text-align: center; padding: 24px;
+}
+#welcome h1 {
+  font-size: clamp(2rem, 6vw, 4rem); font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple), var(--accent-blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; line-height: 1.2;
+}
+#welcome p { color: var(--text-dim); font-size: 1.1rem; max-width: 420px; }
+.btn-group { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.btn {
+  padding: 16px 36px; border: none; border-radius: var(--radius); font-size: 1.1rem;
+  font-weight: 700; cursor: pointer; transition: all 0.2s; text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.btn:active { transform: scale(0.96); }
+.btn-host {
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  color: white;
+}
+.btn-join {
+  background: linear-gradient(135deg, var(--accent-blue), #3b82f6);
+  color: white;
+}
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), #f59e0b);
+  color: #1a1a2e;
+}
+.btn-small { padding: 10px 20px; font-size: 0.9rem; }
+.btn-outline {
+  background: transparent; border: 2px solid var(--text-dim); color: var(--text);
+}
+
+/* ===== HOST LOBBY ===== */
+#host-lobby {
+  flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: 24px; text-align: center; overflow-y: auto;
+}
+#host-lobby h2 { font-size: 1.8rem; color: var(--accent-pink); }
+.room-code-display {
+  font-size: 3rem; font-weight: 900; letter-spacing: 8px;
+  background: linear-gradient(135deg, var(--gold), #f59e0b);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; padding: 8px;
+}
+.room-url {
+  font-size: 0.85rem; color: var(--text-dim); word-break: break-all;
+  max-width: 500px; padding: 12px 16px; background: rgba(255,255,255,0.05);
+  border-radius: 8px; cursor: pointer; transition: background 0.2s;
+}
+.room-url:hover { background: rgba(255,255,255,0.1); }
+.team-setup { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.team-count-control { display: flex; align-items: center; gap: 16px; }
+.team-count-control button {
+  width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent-blue);
+  background: transparent; color: var(--accent-blue); font-size: 1.4rem;
+  cursor: pointer; font-weight: bold;
+}
+.team-count-control span { font-size: 2rem; font-weight: 800; min-width: 40px; text-align: center; }
+.team-roster {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  max-width: 700px; width: 100%;
+}
+.team-roster-card {
+  background: var(--card); border-radius: var(--radius); padding: 12px 16px;
+  min-width: 150px; flex: 1; max-width: 220px;
+}
+.team-roster-card h4 { font-size: 0.9rem; margin-bottom: 6px; }
+.team-roster-card .members {
+  font-size: 0.8rem; color: var(--text-dim); min-height: 24px;
+}
+
+/* ===== PLAYER LOBBY ===== */
+#player-lobby {
+  flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  padding: 24px; text-align: center;
+}
+.input-group { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 320px; }
+.input-group label { font-size: 0.85rem; color: var(--text-dim); text-align: left; }
+.input-group input, .input-group select {
+  padding: 14px 16px; border-radius: var(--radius); border: 2px solid #333;
+  background: var(--card); color: var(--text); font-size: 1rem;
+  outline: none; transition: border-color 0.2s;
+}
+.input-group input:focus, .input-group select:focus { border-color: var(--accent-blue); }
+#connection-status {
+  padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+}
+.status-connecting { background: rgba(251,191,36,0.2); color: #fbbf24; }
+.status-connected { background: rgba(52,211,153,0.2); color: var(--correct); }
+.status-error { background: rgba(248,113,113,0.2); color: var(--wrong); }
+
+/* ===== PLAYER TEAM PICKER ===== */
+#player-team-pick {
+  flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  padding: 24px; text-align: center;
+}
+.team-pick-grid {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  max-width: 400px;
+}
+.team-pick-btn {
+  padding: 20px 28px; border-radius: var(--radius); border: 3px solid transparent;
+  font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  min-width: 140px; text-align: center;
+}
+.team-pick-btn:active { transform: scale(0.95); }
+.team-pick-btn.selected { box-shadow: 0 0 20px rgba(255,255,255,0.2); transform: scale(1.05); }
+
+/* ===== GAME BOARD ===== */
+#game-board { flex-direction: column; padding: 12px; gap: 8px; }
+.scoreboard {
+  display: flex; gap: 12px; justify-content: center; align-items: center;
+  padding: 8px 0; flex-shrink: 0; flex-wrap: wrap;
+}
+.score-card {
+  padding: 8px 20px; border-radius: var(--radius); text-align: center;
+  min-width: 120px; transition: all 0.2s; position: relative;
+}
+.score-card .team-name { font-weight: 700; font-size: 0.85rem; }
+.score-card .team-score { font-size: 1.3rem; font-weight: 900; }
+.score-adjust {
+  display: flex; gap: 4px; justify-content: center; margin-top: 4px;
+}
+.score-adjust button {
+  padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05); color: var(--text-dim); font-size: 0.7rem;
+  cursor: pointer; transition: all 0.15s; font-weight: 600;
+}
+.score-adjust button:hover { background: rgba(255,255,255,0.15); color: var(--text); }
+.board-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+  flex: 1; min-height: 0;
+}
+.category-header {
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  border-radius: var(--radius); display: flex; align-items: center; justify-content: center;
+  padding: 8px 4px; text-align: center; font-weight: 800;
+  font-size: clamp(0.65rem, 1.3vw, 1rem); line-height: 1.2;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.cell {
+  background: var(--card); border-radius: var(--radius); display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+  font-size: clamp(1.2rem, 2.5vw, 2rem); font-weight: 900; color: var(--gold);
+  transition: all 0.2s; position: relative; overflow: hidden;
+}
+.cell:hover:not(.used) { background: var(--card-hover); transform: scale(1.03); }
+.cell.used { background: rgba(255,255,255,0.03); color: transparent; cursor: default; pointer-events: none; }
+
+/* ===== TURN INDICATOR ===== */
+.turn-indicator {
+  text-align: center; font-size: 0.85rem; font-weight: 600;
+  padding: 4px 16px; border-radius: 16px; margin-top: -4px;
+  animation: turnPulse 2s ease-in-out infinite;
+}
+@keyframes turnPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+/* ===== QUESTION OVERLAY ===== */
+#question-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.95); flex-direction: column;
+  align-items: center; justify-content: center; gap: 24px; padding: 32px;
+  text-align: center;
+}
+#question-overlay.active {
+  animation: questionEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes questionEnter {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+#question-overlay .q-category {
+  font-size: 1rem; color: var(--accent-pink); text-transform: uppercase;
+  letter-spacing: 2px; font-weight: 700;
+}
+#question-overlay .q-value { font-size: 1.2rem; color: var(--gold); font-weight: 800; }
+#question-overlay .q-text {
+  font-size: clamp(1.5rem, 4vw, 2.8rem); font-weight: 700;
+  max-width: 800px; line-height: 1.4;
+}
+#question-overlay .q-answer {
+  font-size: clamp(1.2rem, 3vw, 2rem); color: var(--correct);
+  font-weight: 700; max-width: 700px;
+  opacity: 0; transition: opacity 0.4s;
+}
+#question-overlay .q-answer.revealed { opacity: 1; }
+.buzz-indicator {
+  font-size: 1.4rem; font-weight: 800; padding: 12px 32px;
+  border-radius: var(--radius); animation: pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+.buzz-queue { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.buzz-chip {
+  padding: 6px 14px; border-radius: 16px; font-size: 0.85rem; font-weight: 600;
+  background: rgba(255,255,255,0.1);
+}
+.buzz-chip:first-child { background: var(--gold); color: #1a1a2e; }
+.host-controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.host-hint {
+  font-size: 0.8rem; color: var(--text-dim); font-style: italic;
+  margin-top: -8px; max-width: 500px;
+}
+
+/* ===== DAILY DOUBLE ===== */
+#daily-double-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,0.97); flex-direction: column;
+  align-items: center; justify-content: center; gap: 24px; padding: 32px;
+  text-align: center;
+}
+.dd-title {
+  font-size: clamp(2.5rem, 7vw, 5rem); font-weight: 900;
+  background: linear-gradient(135deg, var(--gold), #f59e0b, var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: dd-shimmer 1.5s ease-in-out infinite alternate;
+  text-transform: uppercase; letter-spacing: 4px;
+}
+@keyframes dd-shimmer { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+.wager-input { display: flex; gap: 12px; align-items: center; justify-content: center; }
+.wager-input input {
+  width: 150px; padding: 14px; border-radius: var(--radius);
+  border: 2px solid var(--gold); background: var(--card);
+  color: var(--gold); font-size: 1.5rem; font-weight: 800;
+  text-align: center; outline: none;
+}
+
+/* ===== PLAYER BUZZER ===== */
+#player-game {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 24px; text-align: center;
+}
+.buzzer-btn {
+  width: min(280px, 80vw); height: min(280px, 80vw); border-radius: 50%;
+  border: none; font-size: 1.8rem; font-weight: 900; text-transform: uppercase;
+  cursor: pointer; transition: all 0.15s; letter-spacing: 2px;
+}
+.buzzer-btn.ready {
+  background: radial-gradient(circle at 35% 35%, #ff8a8a, var(--accent-pink), #c2185b);
+  color: white; box-shadow: 0 0 40px rgba(255,107,157,0.4);
+}
+.buzzer-btn.ready:active {
+  transform: scale(0.92);
+  box-shadow: 0 0 60px rgba(255,107,157,0.7);
+}
+.buzzer-btn.locked {
+  background: radial-gradient(circle at 35% 35%, #555, #333, #222);
+  color: #666; cursor: not-allowed;
+}
+.buzzer-btn.buzzed {
+  background: radial-gradient(circle at 35% 35%, #6ee7b7, var(--correct), #059669);
+  color: white; box-shadow: 0 0 40px rgba(52,211,153,0.5);
+}
+.player-q-text {
+  font-size: 1.1rem; max-width: 400px; line-height: 1.5;
+  color: var(--text-dim); min-height: 60px;
+}
+.player-score-display { font-size: 2.5rem; font-weight: 900; color: var(--gold); }
+.player-team-label {
+  font-size: 0.85rem; font-weight: 600; padding: 4px 14px;
+  border-radius: 12px; margin-bottom: -8px;
+}
+.player-mini-scoreboard {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  width: 100%; max-width: 400px;
+}
+.mini-score-chip {
+  padding: 4px 10px; border-radius: 8px; font-size: 0.75rem;
+  font-weight: 700; opacity: 0.6; transition: all 0.3s;
+}
+.mini-score-chip.mine { opacity: 1; transform: scale(1.05); }
+
+/* ===== FINAL JEOPARDY ===== */
+#final-jeopardy {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; padding: 32px; text-align: center; overflow-y: auto;
+}
+.final-category {
+  font-size: clamp(1rem, 2vw, 1.3rem); color: var(--accent-pink);
+  text-transform: uppercase; letter-spacing: 3px; font-weight: 700;
+}
+.final-question {
+  font-size: clamp(1.5rem, 4vw, 2.8rem); font-weight: 700;
+  max-width: 800px; line-height: 1.4;
+}
+.final-timer {
+  font-size: 4rem; font-weight: 900; color: var(--gold);
+  font-variant-numeric: tabular-nums; transition: color 0.3s;
+}
+.final-timer.warning { color: var(--wrong); animation: timerFlash 0.5s ease-in-out infinite alternate; }
+@keyframes timerFlash { from { opacity: 1; } to { opacity: 0.4; } }
+.final-reveals { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.final-reveal-card {
+  background: var(--card); border-radius: var(--radius); padding: 16px 24px;
+  min-width: 180px; text-align: center; transition: all 0.3s;
+}
+.final-reveal-card.correct { border: 2px solid var(--correct); }
+.final-reveal-card.incorrect { border: 2px solid var(--wrong); }
+
+/* ===== PLAYER FINAL ===== */
+#player-final {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 24px; text-align: center;
+}
+#player-final .wager-input input { width: 120px; padding: 12px; font-size: 1.3rem; }
+#player-final textarea {
+  width: 100%; max-width: 320px; padding: 14px; border-radius: var(--radius);
+  border: 2px solid #333; background: var(--card); color: var(--text);
+  font-size: 1rem; resize: none; height: 80px; outline: none;
+}
+#player-final textarea:focus { border-color: var(--accent-blue); }
+
+/* ===== GAME OVER ===== */
+#game-over {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px; padding: 32px; text-align: center;
+}
+#game-over h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900; }
+.final-standings {
+  display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 500px;
+}
+.standing-row {
+  display: flex; align-items: center; gap: 16px; padding: 16px 24px;
+  border-radius: var(--radius); background: var(--card);
+}
+.standing-rank { font-size: 2rem; font-weight: 900; min-width: 50px; }
+.standing-name { font-size: 1.2rem; font-weight: 700; flex: 1; text-align: left; }
+.standing-score { font-size: 1.4rem; font-weight: 900; color: var(--gold); }
+.standing-row:first-child {
+  background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(245,158,11,0.1));
+  border: 1px solid rgba(255,215,0,0.3);
+}
+.confetti { position: fixed; pointer-events: none; z-index: 200; }
+
+.manual-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  background: rgba(251,191,36,0.15); color: #fbbf24;
+  text-align: center; padding: 6px; font-size: 0.8rem; font-weight: 600;
+}
+
+.back-link {
+  color: var(--text-dim); font-size: 0.85rem; cursor: pointer;
+  text-decoration: underline; transition: color 0.2s;
+}
+.back-link:hover { color: var(--text); }
+
+.hidden { display: none !important; }
+.fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 768px) {
+  .board-grid { gap: 4px; }
+  .category-header { font-size: clamp(0.55rem, 2.2vw, 0.85rem); padding: 6px 3px; }
+  .cell { font-size: 1rem; }
+  .scoreboard { gap: 6px; }
+  .score-card { padding: 6px 12px; min-width: 80px; }
+  .score-card .team-score { font-size: 1rem; }
+  .score-adjust button { padding: 1px 6px; font-size: 0.65rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== WELCOME ==================== -->
+<div id="welcome" class="screen active">
+  <h1>Baby Shower<br>Jeopardy!</h1>
+  <p>A fun trivia game for the whole party. One host controls the board on the big screen, everyone else buzzes in on their phones.</p>
+  <div class="btn-group">
+    <button class="btn btn-host" onclick="ensureAudio(); setupHost()">Host Game</button>
+    <button class="btn btn-join" onclick="ensureAudio(); showJoin()">Join Game</button>
+  </div>
+</div>
+
+<!-- ==================== HOST LOBBY ==================== -->
+<div id="host-lobby" class="screen">
+  <h2>Game Room</h2>
+  <div class="room-code-display" id="room-code-display"></div>
+  <div id="qr-container"></div>
+  <div class="room-url" id="room-url" onclick="copyRoomUrl()" title="Tap to copy"></div>
+  <div class="team-setup">
+    <div style="color: var(--text-dim); font-size: 0.9rem;">Number of Teams</div>
+    <div class="team-count-control">
+      <button onclick="changeTeamCount(-1)">&minus;</button>
+      <span id="team-count">3</span>
+      <button onclick="changeTeamCount(1)">+</button>
+    </div>
+  </div>
+  <div class="team-roster" id="team-roster"></div>
+  <button class="btn btn-gold" onclick="startGame()">Start Game</button>
+  <button class="btn btn-outline btn-small" onclick="startGame(true)" style="margin-top:-8px">
+    Start Without Phones (Manual Mode)
+  </button>
+</div>
+
+<!-- ==================== PLAYER LOBBY ==================== -->
+<div id="player-lobby" class="screen">
+  <h2 style="color: var(--accent-blue);">Join Game</h2>
+  <div class="input-group">
+    <label>Room Code</label>
+    <input type="text" id="join-code" placeholder="e.g. STORK42" maxlength="12"
+      style="text-transform: uppercase; text-align: center; font-size: 1.3rem; letter-spacing: 4px;">
+  </div>
+  <div class="input-group">
+    <label>Your Name</label>
+    <input type="text" id="player-name" placeholder="e.g. Sarah" maxlength="20">
+  </div>
+  <button class="btn btn-join" onclick="ensureAudio(); joinGame()">Connect</button>
+  <div id="connection-status" class="hidden"></div>
+  <span class="back-link" onclick="showScreen('welcome')">Back</span>
+</div>
+
+<!-- ==================== PLAYER TEAM PICKER ==================== -->
+<div id="player-team-pick" class="screen">
+  <h2 style="color: var(--accent-blue);">Pick Your Team</h2>
+  <p style="color: var(--text-dim); max-width: 300px;">Tap a team to join. You can switch until the game starts.</p>
+  <div class="team-pick-grid" id="team-pick-grid"></div>
+  <div id="pick-status" style="color: var(--text-dim); font-size: 0.9rem;">Waiting for the host to start...</div>
+</div>
+
+<!-- ==================== GAME BOARD (HOST) ==================== -->
+<div id="game-board" class="screen">
+  <div class="scoreboard" id="scoreboard"></div>
+  <div id="turn-indicator-container"></div>
+  <div class="board-grid" id="board-grid"></div>
+</div>
+
+<!-- ==================== QUESTION OVERLAY (HOST) ==================== -->
+<div id="question-overlay" class="screen">
+  <div class="q-category" id="q-category"></div>
+  <div class="q-value" id="q-value"></div>
+  <div class="q-text" id="q-text"></div>
+  <div class="buzz-queue" id="buzz-queue"></div>
+  <div class="buzz-indicator hidden" id="buzz-indicator"></div>
+  <div class="q-answer" id="q-answer"></div>
+  <div class="host-hint" id="host-hint"></div>
+  <div class="host-controls" id="host-controls">
+    <button class="btn btn-small" style="background:var(--accent-blue);color:#fff" onclick="openBuzzer()">Open Buzzers</button>
+    <button class="btn btn-small" style="background:var(--correct);color:#1a1a2e" onclick="markCorrect()" id="btn-correct">Correct</button>
+    <button class="btn btn-small" style="background:var(--wrong);color:#fff" onclick="markWrong()" id="btn-wrong">Wrong</button>
+    <button class="btn btn-small btn-outline" onclick="revealAnswer()">Show Answer</button>
+    <button class="btn btn-small btn-outline" onclick="closeQuestion()">Back to Board</button>
+  </div>
+</div>
+
+<!-- ==================== DAILY DOUBLE (HOST) ==================== -->
+<div id="daily-double-overlay" class="screen">
+  <div class="dd-title">Daily Double!</div>
+  <div id="dd-team-name" style="font-size:1.3rem; color:var(--accent-blue); font-weight:700;"></div>
+  <div id="dd-max-wager" style="color:var(--text-dim);"></div>
+  <div class="wager-input">
+    <input type="number" id="dd-wager" min="0" placeholder="Wager">
+    <button class="btn btn-gold btn-small" onclick="submitDailyDouble()">Go!</button>
+  </div>
+</div>
+
+<!-- ==================== PLAYER GAME VIEW ==================== -->
+<div id="player-game" class="screen">
+  <div class="player-team-label" id="player-team-label"></div>
+  <div class="player-score-display" id="player-score">$0</div>
+  <div class="player-mini-scoreboard" id="player-mini-scoreboard"></div>
+  <div class="player-q-text" id="player-q-text">Waiting for the host to pick a question...</div>
+  <button class="buzzer-btn locked" id="buzzer-btn" onclick="buzz()" disabled>Wait</button>
+  <div id="player-status" style="color:var(--text-dim); font-size:0.85rem;"></div>
+</div>
+
+<!-- ==================== PLAYER FINAL JEOPARDY ==================== -->
+<div id="player-final" class="screen">
+  <h2 style="color:var(--gold);">Final Jeopardy</h2>
+  <div class="final-category" id="pf-category"></div>
+  <div id="pf-phase-wager">
+    <p style="color:var(--text-dim); margin-bottom: 12px;">How much will you wager?</p>
+    <div class="wager-input">
+      <input type="number" id="pf-wager" min="0" placeholder="$">
+      <button class="btn btn-gold btn-small" onclick="submitFinalWager()">Lock In</button>
+    </div>
+  </div>
+  <div id="pf-phase-answer" class="hidden">
+    <div class="final-question" id="pf-question" style="font-size:1.2rem; margin-bottom:16px;"></div>
+    <textarea id="pf-answer" placeholder="Your answer..."></textarea>
+    <button class="btn btn-gold btn-small" style="margin-top:12px" onclick="submitFinalAnswer()">Submit</button>
+  </div>
+  <div id="pf-phase-waiting" class="hidden">
+    <p style="color:var(--correct); font-size:1.2rem; font-weight:700;">Answer submitted! Good luck!</p>
+  </div>
+</div>
+
+<!-- ==================== FINAL JEOPARDY (HOST) ==================== -->
+<div id="final-jeopardy" class="screen">
+  <div id="fj-phase"></div>
+</div>
+
+<!-- ==================== GAME OVER ==================== -->
+<div id="game-over" class="screen">
+  <h1 style="background:linear-gradient(135deg,var(--gold),#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+    Game Over!
+  </h1>
+  <div class="final-standings" id="final-standings"></div>
+  <button class="btn btn-host" onclick="location.reload()">Play Again</button>
+</div>
+
+<script>
+// ========================================================
+//  GAME DATA — ordered easy → hard within each category
+// ========================================================
+const QUESTION_POOL = [
+  {
+    name: "Baby Firsts",
+    questions: [
+      // --- easy ($200) ---
+      { q: "What is usually a baby's first form of communication?", a: "Crying" },
+      { q: "At what age do most babies say their first word?", a: "Around 12 months" },
+      { q: "What is typically a baby's first solid food?", a: "Iron-fortified baby cereal (rice cereal)" },
+      // --- medium-easy ($400) ---
+      { q: "At what age do most babies take their first steps?", a: "9 to 12 months" },
+      { q: "At what age do most babies first sit up without support?", a: "Around 6 months" },
+      { q: "When do most babies first start to crawl?", a: "7 to 10 months" },
+      // --- medium ($600) ---
+      { q: "At what age can most babies first hold their head up steadily?", a: "Around 3 to 4 months" },
+      { q: "At what age do babies typically wave 'bye-bye' for the first time?", a: "Around 9 to 12 months" },
+      { q: "At what age do most babies first smile socially (not just a reflex)?", a: "Around 6 to 8 weeks" },
+      // --- medium-hard ($800) ---
+      { q: "How early can a baby recognize their mother's voice?", a: "In the womb! (third trimester)" },
+      { q: "What is usually a baby's first tooth?", a: "Lower central incisor (bottom front tooth)" },
+      { q: "At what age do most babies start 'object permanence' — understanding hidden objects still exist?", a: "Around 8 to 12 months" },
+      // --- hard ($1000) ---
+      { q: "What is typically the first color a baby can see?", a: "Red (high-contrast colors come first)" },
+      { q: "What reflex causes newborns to grasp anything placed in their palm?", a: "The palmar grasp reflex" },
+      { q: "At what age do most babies begin to use a 'pincer grasp' to pick up small objects?", a: "Around 9 to 12 months" },
+    ]
+  },
+  {
+    name: "Cravings & Crazings",
+    questions: [
+      // --- easy ($200) ---
+      { q: "How many weeks is a full-term pregnancy?", a: "40 weeks" },
+      { q: "What trimester is often called the 'honeymoon phase' of pregnancy?", a: "The second trimester" },
+      { q: "What food are pregnant women most commonly advised to avoid due to mercury?", a: "Certain fish (swordfish, shark, king mackerel)" },
+      // --- medium-easy ($400) ---
+      { q: "How much weight gain is generally recommended during pregnancy?", a: "25 to 35 pounds" },
+      { q: "What vitamin is critical to take before and during early pregnancy to prevent neural tube defects?", a: "Folic acid (folate)" },
+      { q: "What is 'colostrum'?", a: "The first milk produced before regular breast milk comes in" },
+      // --- medium ($600) ---
+      { q: "What pregnancy craving involves eating non-food items like clay or chalk?", a: "Pica" },
+      { q: "What hormone does a pregnancy test detect?", a: "hCG (human chorionic gonadotropin)" },
+      { q: "How many extra calories per day does a pregnant woman need in the third trimester?", a: "About 300 to 450 extra calories" },
+      // --- medium-hard ($800) ---
+      { q: "What is the 'linea nigra'?", a: "A dark vertical line that appears on the belly during pregnancy" },
+      { q: "What is the term for when a non-pregnant partner experiences pregnancy symptoms?", a: "Couvade syndrome (sympathetic pregnancy)" },
+      { q: "What is a 'mucus plug' in pregnancy?", a: "A seal of mucus that blocks the cervix during pregnancy and is released before labor" },
+      // --- hard ($1000) ---
+      { q: "What is 'hyperemesis gravidarum'?", a: "Severe, persistent nausea and vomiting during pregnancy (beyond normal morning sickness)" },
+      { q: "What hormone relaxes ligaments and joints during pregnancy to prepare for birth?", a: "Relaxin" },
+      { q: "What is 'quickening' in pregnancy?", a: "The first time a mother feels the baby move (usually 16-25 weeks)" },
+    ]
+  },
+  {
+    name: "Lullaby Lyrics",
+    questions: [
+      // --- easy ($200) ---
+      { q: "Complete the lyric: 'Twinkle, twinkle, little ___'", a: "Star" },
+      { q: "Complete: 'Mary had a little lamb, its fleece was white as ___'", a: "Snow" },
+      { q: "What does the itsy-bitsy spider climb up?", a: "The water spout" },
+      // --- medium-easy ($400) ---
+      { q: "Complete: 'Rock-a-bye baby, on the ___'", a: "Treetop" },
+      { q: "What nursery rhyme character 'sat on a wall' and 'had a great fall'?", a: "Humpty Dumpty" },
+      { q: "Complete: 'Pat-a-cake, pat-a-cake, baker's ___'", a: "Man" },
+      // --- medium ($600) ---
+      { q: "In 'Hush Little Baby,' what is the first thing Mama is going to buy?", a: "A mockingbird" },
+      { q: "In 'Hey Diddle Diddle,' what jumped over the moon?", a: "The cow" },
+      { q: "What did Little Bo Peep lose?", a: "Her sheep" },
+      // --- medium-hard ($800) ---
+      { q: "In 'Jack and Jill,' what did Jack break when he fell down?", a: "His crown (head)" },
+      { q: "In 'Three Blind Mice,' what did the farmer's wife use to cut off their tails?", a: "A carving knife" },
+      { q: "In 'This Little Piggy,' what did the first little piggy do?", a: "Went to market" },
+      // --- hard ($1000) ---
+      { q: "In 'Hush Little Baby,' what does Mama buy if the looking glass gets broke?", a: "A billy goat" },
+      { q: "What is the second line of 'Twinkle, Twinkle, Little Star'?", a: "How I wonder what you are" },
+      { q: "In 'Oranges and Lemons,' what do the bells of Old Bailey say?", a: "When will you pay me?" },
+    ]
+  },
+  {
+    name: "Guess the Price",
+    questions: [
+      // --- easy ($200) ---
+      { q: "Roughly how much does a typical pack of diapers (30-count) cost?", a: "$10 to $13" },
+      { q: "About how much does a typical baby monitor cost?", a: "$30 to $150" },
+      { q: "About how much does a typical high chair cost?", a: "$50 to $200" },
+      // --- medium-easy ($400) ---
+      { q: "What is the average cost of a new baby car seat?", a: "$100 to $250" },
+      { q: "About how much does a typical baby stroller cost?", a: "$150 to $400" },
+      { q: "How much does the average crib mattress cost?", a: "$50 to $200" },
+      // --- medium ($600) ---
+      { q: "What's the average cost of one year of infant formula?", a: "$1,200 to $1,500" },
+      { q: "What is the average cost of one month of daycare for an infant in the U.S.?", a: "$1,000 to $1,500" },
+      { q: "How many diapers does a baby use in the first year on average?", a: "About 2,500 to 3,000" },
+      // --- medium-hard ($800) ---
+      { q: "How much does the average American family spend on a baby's first year?", a: "About $12,000" },
+      { q: "How much does the average hospital delivery cost in the U.S. (before insurance)?", a: "$15,000 to $20,000+" },
+      { q: "What is the average cost of a convertible crib that grows with the child?", a: "$200 to $500" },
+      // --- hard ($1000) ---
+      { q: "What is the average cost of raising a child from birth to age 18 in the U.S.?", a: "About $230,000 to $310,000" },
+      { q: "How much does the average NICU stay cost per day in the U.S.?", a: "$3,000 to $5,000+ per day" },
+      { q: "What is the average lifetime cost of diapers from birth to potty training?", a: "About $2,000 to $3,000" },
+    ]
+  },
+  {
+    name: "Pop Culture Babies",
+    questions: [
+      // --- easy ($200) ---
+      { q: "In 'The Incredibles,' what is the baby's name and what is his power?", a: "Jack-Jack; he has multiple powers (shapeshifting, fire, laser eyes, etc.)" },
+      { q: "What is the name of the baby in the TV show 'The Simpsons'?", a: "Maggie Simpson" },
+      { q: "In 'Friends,' what did Rachel name her baby?", a: "Emma" },
+      // --- medium-easy ($400) ---
+      { q: "What movie features a baby who is secretly a business executive?", a: "The Boss Baby" },
+      { q: "What Pixar movie opens with the birth of a child named Riley?", a: "Inside Out" },
+      { q: "In 'Shrek,' what color are Shrek and Fiona's babies?", a: "Green (ogre babies)" },
+      // --- medium ($600) ---
+      { q: "What celebrity famously named their daughter 'Apple'?", a: "Gwyneth Paltrow (and Chris Martin)" },
+      { q: "What pop star named their child 'Blue Ivy'?", a: "Beyonce (and Jay-Z)" },
+      { q: "In 'Ice Age,' what kind of baby do Manny, Sid, and Diego rescue?", a: "A human baby" },
+      // --- medium-hard ($800) ---
+      { q: "What cartoon baby always seems to be trying to escape from a playpen?", a: "Stewie Griffin (Family Guy)" },
+      { q: "What actor named their son 'X AE A-12' (later X AE A-Xii)?", a: "Elon Musk (with Grimes)" },
+      { q: "In 'The Lion King,' what is the name of Simba and Nala's daughter?", a: "Kiara" },
+      // --- hard ($1000) ---
+      { q: "What 1990s TV show featured a talking baby named Junior who only adults couldn't understand?", a: "Baby Talk (ABC sitcom)" },
+      { q: "In 'The Rugrats,' what is the name of Tommy Pickles' younger brother?", a: "Dil Pickles" },
+      { q: "What celebrity couple named their daughter 'North'?", a: "Kim Kardashian and Kanye West" },
+    ]
+  },
+  {
+    name: "Old Wives' Tales",
+    questions: [
+      // --- easy ($200) ---
+      { q: "If you're carrying high, is it supposedly a boy or a girl?", a: "A girl" },
+      { q: "According to folklore, craving salty food during pregnancy means what?", a: "You're having a boy" },
+      { q: "What food is a pregnant woman told to eat to make the baby come sooner?", a: "Spicy food" },
+      // --- medium-easy ($400) ---
+      { q: "What item dangled over a pregnant belly is said to predict the baby's gender?", a: "A wedding ring on a string" },
+      { q: "What does heartburn during pregnancy supposedly predict about the baby?", a: "The baby will have a lot of hair" },
+      { q: "According to old wives' tales, what does cold feet during pregnancy mean?", a: "You're having a boy" },
+      // --- medium ($600) ---
+      { q: "According to old wives' tales, what does a fast fetal heart rate (140+) predict?", a: "A girl" },
+      { q: "If a pregnant woman's skin is glowing, is it supposedly a boy or a girl?", a: "A boy (girls supposedly 'steal your beauty')" },
+      { q: "If the baby's father gains weight during the pregnancy, what does that predict?", a: "A girl" },
+      // --- medium-hard ($800) ---
+      { q: "According to superstition, what happens if you raise your arms above your head while pregnant?", a: "The umbilical cord will wrap around the baby's neck (not true!)" },
+      { q: "According to folklore, what does it mean if you dream about a baby during pregnancy?", a: "It predicts the baby's gender (girl dream = boy, boy dream = girl)" },
+      { q: "According to old wives' tales, what does craving sweets during pregnancy predict?", a: "A girl" },
+      // --- hard ($1000) ---
+      { q: "According to the 'Drano test,' what household product supposedly predicts gender when mixed with urine?", a: "Drano (changes color — completely debunked!)" },
+      { q: "According to the 'Chinese gender chart,' what two factors determine the baby's sex?", a: "Mother's age at conception and the month of conception" },
+      { q: "What old wives' tale claims that the shape of a mother's nose predicts gender?", a: "A wider nose means a boy; unchanged means a girl" },
+    ]
+  }
+];
+
+const FINAL_JEOPARDY_POOL = [
+  { category: "Baby Science", q: "This is the most common day of the week for babies to be born in the United States.", a: "Tuesday" },
+  { category: "Baby Records", q: "The heaviest baby ever born, in 1879 in Ohio, weighed this many pounds.", a: "22 pounds (about 10 kg)" },
+  { category: "Baby Biology", q: "Babies are born with approximately this many bones — more than an adult has.", a: "About 270 to 300 (adults have 206)" },
+  { category: "Baby History", q: "This common nursery item was invented in 1956 by a grandmother named Ann Moore after she saw African mothers carrying babies in fabric wraps.", a: "The baby carrier (Snugli)" },
+  { category: "Baby Around the World", q: "In this country, it is tradition not to name a baby until 7 days after birth, at a ceremony called the 'naming ceremony.'", a: "Nigeria (and many West African countries)" },
+  { category: "Baby Math", q: "The average newborn baby's head makes up this fraction of their total body length.", a: "About one-quarter (1/4)" },
+  { category: "Baby Nature", q: "Newborn babies cannot do this, which is why they are safe to bathe from birth — it's a reflex they develop around 3 to 4 months.", a: "Roll over" },
+  { category: "Baby Language", q: "Research shows babies of all nationalities babble in this many universal consonant sounds before their language diverges.", a: "About 12 (p, b, m, t, d, n, k, g, etc.)" },
+  { category: "Baby Senses", q: "At birth, a newborn can only see clearly to about this distance — roughly the distance from a cradled baby to its mother's face.", a: "8 to 12 inches" },
+  { category: "Baby Sleep", q: "In the first year of life, a baby spends more total hours doing this than anything else, averaging about 14-17 hours per day as a newborn.", a: "Sleeping" },
+  { category: "Baby Food", q: "This sweet substance, produced by bees, should never be given to a baby under 12 months old due to the risk of infant botulism.", a: "Honey" },
+  { category: "Baby History", q: "Before disposable diapers were invented in 1948, most families used this material that had to be washed and reused.", a: "Cloth (muslin or cotton cloth diapers)" },
+];
+
+const VALUES = [200, 400, 600, 800, 1000];
+const QUESTIONS_PER_TIER = 3;
+
+// Active game board — built from pools at game start
+let gameBoard = [];
+let activeFinalJeopardy = FINAL_JEOPARDY_POOL[0];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildGameBoard() {
+  // Stratified picking: questions are ordered easy→hard in each category.
+  // Pick one random question from each difficulty tier for each value level.
+  gameBoard = QUESTION_POOL.map(cat => {
+    const qs = cat.questions;
+    const tiersCount = 5;
+    const perTier = Math.floor(qs.length / tiersCount);
+    const pick = (start, end) => {
+      const slice = qs.slice(start, Math.min(end, qs.length));
+      return slice[Math.floor(Math.random() * slice.length)];
+    };
+    return {
+      name: cat.name,
+      questions: [
+        pick(0, perTier),                               // $200
+        pick(perTier, perTier * 2),                      // $400
+        pick(perTier * 2, perTier * 3),                  // $600
+        pick(perTier * 3, perTier * 4),                  // $800
+        pick(perTier * 4, qs.length),                    // $1000
+      ],
+    };
+  });
+  activeFinalJeopardy = FINAL_JEOPARDY_POOL[Math.floor(Math.random() * FINAL_JEOPARDY_POOL.length)];
+}
+
+const TEAM_COLORS = [
+  { bg: 'rgba(255,107,157,0.2)', border: '#ff6b9d', text: '#ff6b9d', name: 'Pink' },
+  { bg: 'rgba(78,205,196,0.2)', border: '#4ecdc4', text: '#4ecdc4', name: 'Teal' },
+  { bg: 'rgba(168,85,247,0.2)', border: '#a855f7', text: '#a855f7', name: 'Purple' },
+  { bg: 'rgba(251,191,36,0.2)', border: '#fbbf24', text: '#fbbf24', name: 'Gold' },
+  { bg: 'rgba(96,165,250,0.2)', border: '#60a5fa', text: '#60a5fa', name: 'Blue' },
+  { bg: 'rgba(52,211,153,0.2)', border: '#34d399', text: '#34d399', name: 'Mint' },
+];
+
+// ========================================================
+//  STATE
+// ========================================================
+let isHost = false;
+let manualMode = false;
+let peer = null;
+let connections = {};  // peerId -> { conn, name, team }
+let roomCode = '';
+let teamCount = 3;
+let teams = [];        // [{ name, score, color }]
+let usedCells = new Set();
+let dailyDoubles = new Set();
+let currentQuestion = null;
+let currentValue = 0;
+let currentCategory = '';
+let buzzerOpen = false;
+let buzzQueue = [];
+let activeTeamIndex = -1;
+let ddTeamIndex = -1;
+let ddWager = 0;
+let isDailyDouble = false;
+let finalWagers = {};
+let finalAnswers = {};
+let questionsRemaining = 30;
+let lastCorrectTeam = -1;  // Track who picks next
+let fjTimerInterval = null;
+
+// Player state
+let playerName = '';
+let playerTeam = -1;
+let playerScore = 0;
+let myBuzzState = 'locked';
+let allTeamScores = [];
+let allTeamNames = [];
+
+// ========================================================
+//  AUDIO — resume on first user gesture
+// ========================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playTone(freq, duration, type = 'sine', gain = 0.3) {
+  ensureAudio();
+  if (!audioCtx) return; // AudioContext not supported
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.value = gain;
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+function playBuzz() { playTone(220, 0.15, 'square', 0.2); playTone(330, 0.15, 'square', 0.15); }
+function playCorrect() { playTone(523, 0.15); setTimeout(() => playTone(659, 0.15), 150); setTimeout(() => playTone(784, 0.3), 300); }
+function playWrong() { playTone(200, 0.4, 'sawtooth', 0.2); }
+function playDailyDouble() {
+  [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 0.2, 'triangle', 0.25), i * 150));
+}
+function playReveal() { playTone(600, 0.1); }
+
+// Think music for Final Jeopardy — a non-copyrighted tension loop
+let thinkMusicActive = false;
+let thinkMusicTimeouts = [];
+function playThinkMusic() {
+  stopThinkMusic();
+  thinkMusicActive = true;
+  // A simple tension-building ascending/descending pattern in A minor
+  const melody = [220, 262, 294, 330, 349, 330, 294, 262, 220, 247, 294, 330, 349, 392, 349, 330];
+  let i = 0;
+  function playNext() {
+    if (!thinkMusicActive) return;
+    const note = melody[i % melody.length];
+    playTone(note, 0.35, 'sine', 0.06);
+    // Soft bass note every 4 beats
+    if (i % 4 === 0) playTone(note / 2, 0.5, 'triangle', 0.04);
+    i++;
+    thinkMusicTimeouts.push(setTimeout(playNext, 450));
+  }
+  playNext();
+}
+function stopThinkMusic() {
+  thinkMusicActive = false;
+  thinkMusicTimeouts.forEach(t => clearTimeout(t));
+  thinkMusicTimeouts = [];
+}
+
+// ========================================================
+//  QR CODE (using qrcode-generator library)
+// ========================================================
+function renderQR(container, text) {
+  container.innerHTML = '';
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    const img = document.createElement('div');
+    img.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4 });
+    const svg = img.querySelector('svg');
+    if (svg) {
+      svg.style.borderRadius = '8px';
+      svg.style.background = 'white';
+      svg.style.padding = '8px';
+      svg.style.width = '180px';
+      svg.style.height = '180px';
+    }
+    container.appendChild(svg || img);
+  } catch (e) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;">QR unavailable — use link below</div>';
+  }
+}
+
+// ========================================================
+//  SCREEN MANAGEMENT
+// ========================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ========================================================
+//  HOST SETUP
+// ========================================================
+function setupHost() {
+  isHost = true;
+  roomCode = generateRoomCode();
+  document.getElementById('room-code-display').textContent = roomCode;
+
+  // Build join URL
+  const base = location.origin !== 'null' ? `${location.origin}${location.pathname}` : location.href.split('?')[0];
+  const url = `${base}?join=${roomCode}`;
+  const urlEl = document.getElementById('room-url');
+  urlEl.textContent = url;
+  urlEl.title = 'Tap to copy link';
+
+  renderQR(document.getElementById('qr-container'), url);
+  renderTeamRoster();
+  showScreen('host-lobby');
+  initHostPeer();
+}
+
+function generateRoomCode() {
+  // Themed word + 2-digit suffix = ~1000 unique combos (vs. 10 before)
+  const words = [
+    'STORK', 'RATTLE', 'BOOTIES', 'ONESIE', 'CRADLE', 'BINKY', 'DUCKY',
+    'GIGGLES', 'CUDDLE', 'DIMPLE', 'BOTTLE', 'DIAPER', 'BLANKY', 'PACIFY',
+    'LULLABY', 'SWADDLE', 'CRIB', 'TEDDY', 'NAPTIME', 'BURP',
+  ];
+  const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  return words[Math.floor(Math.random() * words.length)] + suffix;
+}
+
+function copyRoomUrl() {
+  const url = document.getElementById('room-url').textContent;
+  navigator.clipboard?.writeText(url);
+  const el = document.getElementById('room-url');
+  const orig = el.textContent;
+  el.textContent = 'Copied!';
+  setTimeout(() => el.textContent = orig, 1500);
+}
+
+function changeTeamCount(delta) {
+  teamCount = Math.max(2, Math.min(6, teamCount + delta));
+  document.getElementById('team-count').textContent = teamCount;
+  renderTeamRoster();
+  broadcast({ type: 'teamsUpdated', count: teamCount, names: getTeamNames() });
+}
+
+function getTeamNames() {
+  return Array.from({ length: teamCount }, (_, i) => `Team ${i + 1}`);
+}
+
+function renderTeamRoster() {
+  const roster = document.getElementById('team-roster');
+  roster.innerHTML = '';
+  for (let i = 0; i < teamCount; i++) {
+    const color = TEAM_COLORS[i % TEAM_COLORS.length];
+    const members = Object.values(connections)
+      .filter(c => c.team === i)
+      .map(c => esc(c.name));
+
+    const card = document.createElement('div');
+    card.className = 'team-roster-card';
+    card.style.border = `2px solid ${color.border}`;
+    card.innerHTML = `
+      <h4 style="color:${color.text}">Team ${i + 1}</h4>
+      <div class="members">${members.length ? members.join(', ') : '<em>empty</em>'}</div>
+    `;
+    card.querySelector('h4').style.cursor = 'pointer';
+    card.querySelector('h4').onclick = () => {
+      const h4 = card.querySelector('h4');
+      const current = h4.textContent;
+      const newName = prompt(`Rename team:`, current);
+      if (newName && newName.trim()) h4.textContent = newName.trim();
+    };
+    roster.appendChild(card);
+  }
+}
+
+let hostRetries = 0;
+function initHostPeer() {
+  if (peer) { try { peer.destroy(); } catch (e) {} }
+  const hostId = `bsj-host-${roomCode.toLowerCase()}`;
+  peer = new Peer(hostId);
+
+  peer.on('open', id => {
+    hostRetries = 0;
+    console.log('Host peer open:', id);
+  });
+
+  peer.on('connection', conn => {
+    conn.on('open', () => {
+      conn.on('data', data => handlePlayerMessage(conn, data));
+    });
+    conn.on('close', () => {
+      delete connections[conn.peer];
+      renderTeamRoster();
+    });
+  });
+
+  peer.on('error', err => {
+    console.warn('Host peer error:', err);
+    // If ID is taken, try again with a different code (max 3 retries)
+    if (err.type === 'unavailable-id' && hostRetries < 3) {
+      hostRetries++;
+      roomCode = generateRoomCode();
+      document.getElementById('room-code-display').textContent = roomCode;
+      const base = location.origin !== 'null' ? `${location.origin}${location.pathname}` : location.href.split('?')[0];
+      const url = `${base}?join=${roomCode}`;
+      document.getElementById('room-url').textContent = url;
+      renderQR(document.getElementById('qr-container'), url);
+      initHostPeer();
+    } else if (err.type === 'unavailable-id') {
+      alert('Could not create a game room. Try refreshing the page.');
+    }
+  });
+}
+
+function handlePlayerMessage(conn, data) {
+  if (data.type === 'join') {
+    connections[conn.peer] = { conn, name: data.name, team: -1 };
+    renderTeamRoster();
+    conn.send({ type: 'joined', roomCode, teamCount, names: getTeamNames() });
+  }
+  if (data.type === 'pickTeam') {
+    if (connections[conn.peer] && data.team >= 0 && data.team < teamCount) {
+      connections[conn.peer].team = data.team;
+      renderTeamRoster();
+    }
+  }
+  if (data.type === 'buzz' && buzzerOpen) {
+    const team = connections[conn.peer]?.team;
+    if (team < 0) return; // must be on a team
+    // Prevent same-team stacking: skip if this team already has someone in the queue
+    if (buzzQueue.some(b => b.team === team)) return;
+    buzzQueue.push({ name: data.name, peer: conn.peer, team, time: data.time });
+    if (buzzQueue.length === 1) {
+      activeTeamIndex = team;
+      showBuzzWinner(data.name, team);
+    }
+    renderBuzzQueue();
+  }
+  if (data.type === 'finalWager') {
+    // First submission per team wins — ignore duplicates from same team
+    const alreadyHasTeam = Object.values(finalWagers).some(fw => fw.team === data.team);
+    if (!alreadyHasTeam) {
+      finalWagers[conn.peer] = { name: data.name, team: data.team, amount: data.amount };
+    }
+  }
+  if (data.type === 'finalAnswer') {
+    // First submission per team wins
+    const alreadyHasTeam = Object.values(finalAnswers).some(fa => fa.team === data.team);
+    if (!alreadyHasTeam) {
+      finalAnswers[conn.peer] = { name: data.name, team: data.team, answer: data.answer };
+    }
+  }
+}
+
+function broadcast(data) {
+  Object.values(connections).forEach(c => {
+    try { c.conn.send(data); } catch (e) {}
+  });
+}
+
+// ========================================================
+//  PLAYER JOIN
+// ========================================================
+function showJoin() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('join')) {
+    document.getElementById('join-code').value = params.get('join');
+  }
+  showScreen('player-lobby');
+}
+
+function joinGame() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  playerName = document.getElementById('player-name').value.trim();
+  if (!code || !playerName) return;
+
+  roomCode = code;
+  const statusEl = document.getElementById('connection-status');
+  statusEl.className = 'status-connecting';
+  statusEl.textContent = 'Connecting...';
+  statusEl.classList.remove('hidden');
+
+  peer = new Peer();
+  peer.on('open', () => {
+    const hostId = `bsj-host-${code.toLowerCase()}`;
+    const conn = peer.connect(hostId);
+
+    const timeout = setTimeout(() => {
+      statusEl.className = 'status-error';
+      statusEl.textContent = 'Could not find host. Check the code and try again.';
+    }, 8000);
+
+    conn.on('open', () => {
+      clearTimeout(timeout);
+      conn.send({ type: 'join', name: playerName });
+      statusEl.className = 'status-connected';
+      statusEl.textContent = 'Connected!';
+
+      conn.on('data', data => handleHostMessage(conn, data));
+      conn.on('close', () => {
+        showScreen('player-lobby');
+        statusEl.className = 'status-error';
+        statusEl.textContent = 'Disconnected from host.';
+        statusEl.classList.remove('hidden');
+      });
+
+      window.hostConn = conn;
+    });
+
+    conn.on('error', err => {
+      clearTimeout(timeout);
+      statusEl.className = 'status-error';
+      statusEl.textContent = 'Connection failed. Is the host running?';
+    });
+  });
+
+  peer.on('error', err => {
+    statusEl.className = 'status-error';
+    statusEl.textContent = 'Connection failed. Check the room code.';
+  });
+}
+
+function handleHostMessage(conn, data) {
+  switch (data.type) {
+    case 'joined':
+      showTeamPicker(data.teamCount, data.names);
+      break;
+    case 'teamsUpdated':
+      if (document.getElementById('player-team-pick').classList.contains('active')) {
+        showTeamPicker(data.count, data.names);
+      }
+      break;
+    case 'gameStart':
+      playerTeam = data.yourTeam ?? playerTeam;
+      allTeamNames = data.allTeamNames || [];
+      allTeamScores = data.allScores || allTeamNames.map(() => 0);
+      showScreen('player-game');
+      const color = TEAM_COLORS[playerTeam % TEAM_COLORS.length];
+      const label = document.getElementById('player-team-label');
+      label.textContent = data.teamName || `Team ${playerTeam + 1}`;
+      label.style.background = color.bg;
+      label.style.color = color.text;
+      label.style.border = `1px solid ${color.border}`;
+      document.getElementById('player-q-text').textContent = 'Waiting for the host to pick a question...';
+      setBuzzerState('locked');
+      renderPlayerMiniScoreboard();
+      break;
+    case 'question':
+      document.getElementById('player-q-text').textContent = data.text;
+      setBuzzerState('locked');
+      break;
+    case 'buzzerOpen':
+      setBuzzerState('ready');
+      break;
+    case 'buzzerClose':
+      if (myBuzzState !== 'buzzed') setBuzzerState('locked');
+      break;
+    case 'questionDone':
+      setBuzzerState('locked');
+      document.getElementById('player-q-text').textContent = 'Waiting for next question...';
+      break;
+    case 'scoreUpdate':
+      if (data.scores) {
+        allTeamScores = data.scores;
+        if (playerTeam >= 0 && data.scores[playerTeam] !== undefined) {
+          playerScore = data.scores[playerTeam];
+          document.getElementById('player-score').textContent = `$${playerScore.toLocaleString()}`;
+        }
+        renderPlayerMiniScoreboard();
+      }
+      break;
+    case 'finalStart':
+      showScreen('player-final');
+      document.getElementById('pf-category').textContent = data.category;
+      document.getElementById('pf-phase-wager').classList.remove('hidden');
+      document.getElementById('pf-phase-answer').classList.add('hidden');
+      document.getElementById('pf-phase-waiting').classList.add('hidden');
+      document.getElementById('pf-wager').max = Math.max(playerScore, 0);
+      document.getElementById('pf-wager').value = '';
+      document.getElementById('pf-wager').disabled = false;
+      break;
+    case 'finalQuestion':
+      document.getElementById('pf-question').textContent = data.text;
+      document.getElementById('pf-phase-wager').classList.add('hidden');
+      document.getElementById('pf-phase-answer').classList.remove('hidden');
+      document.getElementById('pf-answer').value = '';
+      break;
+    case 'gameOver':
+      showScreen('player-game');
+      document.getElementById('player-q-text').textContent = 'Game over! Check the big screen for final scores.';
+      setBuzzerState('locked');
+      break;
+  }
+}
+
+// ========================================================
+//  PLAYER MINI-SCOREBOARD
+// ========================================================
+function renderPlayerMiniScoreboard() {
+  const container = document.getElementById('player-mini-scoreboard');
+  if (!container || !allTeamNames.length) return;
+  container.innerHTML = allTeamNames.map((name, i) => {
+    const color = TEAM_COLORS[i % TEAM_COLORS.length];
+    const score = allTeamScores[i] || 0;
+    const isMine = i === playerTeam;
+    return `<div class="mini-score-chip${isMine ? ' mine' : ''}"
+      style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">
+      ${esc(name)}: $${score.toLocaleString()}</div>`;
+  }).join('');
+}
+
+// ========================================================
+//  PLAYER TEAM PICKER
+// ========================================================
+function showTeamPicker(count, names) {
+  showScreen('player-team-pick');
+  const grid = document.getElementById('team-pick-grid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < count; i++) {
+    const color = TEAM_COLORS[i % TEAM_COLORS.length];
+    const btn = document.createElement('button');
+    btn.className = 'team-pick-btn';
+    btn.style.background = color.bg;
+    btn.style.color = color.text;
+    btn.style.borderColor = color.border;
+    btn.textContent = (names && names[i]) || `Team ${i + 1}`;
+    btn.onclick = () => {
+      playerTeam = i;
+      grid.querySelectorAll('.team-pick-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.style.borderColor = 'transparent';
+      });
+      btn.classList.add('selected');
+      btn.style.borderColor = color.border;
+      window.hostConn?.send({ type: 'pickTeam', team: i });
+      document.getElementById('pick-status').textContent =
+        `You're on ${btn.textContent}! Waiting for the host to start...`;
+      document.getElementById('pick-status').style.color = color.text;
+    };
+    grid.appendChild(btn);
+  }
+}
+
+function setBuzzerState(state) {
+  myBuzzState = state;
+  const btn = document.getElementById('buzzer-btn');
+  btn.className = `buzzer-btn ${state}`;
+  btn.disabled = state !== 'ready';
+  btn.textContent = state === 'ready' ? 'BUZZ!' : state === 'buzzed' ? 'BUZZED!' : 'WAIT';
+}
+
+function buzz() {
+  if (myBuzzState !== 'ready') return;
+  setBuzzerState('buzzed');
+  playBuzz();
+  if (navigator.vibrate) navigator.vibrate(100);
+  window.hostConn?.send({ type: 'buzz', name: playerName, time: Date.now() });
+}
+
+function submitFinalWager() {
+  const amount = parseInt(document.getElementById('pf-wager').value) || 0;
+  const clamped = Math.max(0, Math.min(amount, Math.max(playerScore, 0)));
+  window.hostConn?.send({ type: 'finalWager', name: playerName, team: playerTeam, amount: clamped });
+  document.getElementById('pf-wager').disabled = true;
+}
+
+function submitFinalAnswer() {
+  const answer = document.getElementById('pf-answer').value.trim();
+  window.hostConn?.send({ type: 'finalAnswer', name: playerName, team: playerTeam, answer });
+  document.getElementById('pf-phase-answer').classList.add('hidden');
+  document.getElementById('pf-phase-waiting').classList.remove('hidden');
+}
+
+// ========================================================
+//  GAME INIT
+// ========================================================
+function startGame(manual = false) {
+  manualMode = manual;
+
+  // Build teams
+  teams = [];
+  const rosterCards = document.querySelectorAll('.team-roster-card h4');
+  for (let i = 0; i < teamCount; i++) {
+    teams.push({
+      name: rosterCards[i]?.textContent || `Team ${i + 1}`,
+      score: 0,
+      color: TEAM_COLORS[i % TEAM_COLORS.length],
+    });
+  }
+
+  // Warn if any connected players haven't picked a team
+  const unassigned = Object.values(connections).filter(c => c.team < 0);
+  if (!manual && unassigned.length > 0) {
+    const names = unassigned.map(c => c.name).join(', ');
+    if (!confirm(`${names} haven't picked a team yet. Start anyway? (They won't be able to buzz in)`)) return;
+  }
+
+  // Pick 2 random daily doubles (not in $200 row)
+  dailyDoubles.clear();
+  while (dailyDoubles.size < 2) {
+    const col = Math.floor(Math.random() * 6);
+    const row = Math.floor(Math.random() * 5);
+    if (row > 0) dailyDoubles.add(`${col}-${row}`);
+  }
+
+  questionsRemaining = 30;
+  lastCorrectTeam = -1;
+  buildGameBoard();
+  buildBoard();
+  buildScoreboard();
+  showScreen('game-board');
+  updateTurnIndicator();
+
+  // Notify players — include all team info for mini-scoreboard
+  const allTeamNamesArr = teams.map(t => t.name);
+  const allScoresArr = teams.map(t => t.score);
+  Object.values(connections).forEach(c => {
+    const teamName = c.team >= 0 ? teams[c.team]?.name : 'Unassigned';
+    c.conn.send({
+      type: 'gameStart', yourTeam: c.team, teamName,
+      allTeamNames: allTeamNamesArr, allScores: allScoresArr,
+    });
+  });
+
+  if (manualMode) {
+    const banner = document.createElement('div');
+    banner.className = 'manual-banner';
+    banner.textContent = 'Manual Mode — use team buttons to award points';
+    document.body.appendChild(banner);
+  }
+}
+
+function buildBoard() {
+  const grid = document.getElementById('board-grid');
+  grid.innerHTML = '';
+
+  gameBoard.forEach(cat => {
+    const header = document.createElement('div');
+    header.className = 'category-header';
+    header.textContent = cat.name;
+    grid.appendChild(header);
+  });
+
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 6; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.textContent = `$${VALUES[row]}`;
+      cell.dataset.col = col;
+      cell.dataset.row = row;
+      cell.onclick = () => selectCell(col, row);
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function buildScoreboard() {
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML = '';
+  teams.forEach((team, i) => {
+    const card = document.createElement('div');
+    card.className = 'score-card';
+    card.style.background = team.color.bg;
+    card.style.border = `2px solid ${team.color.border}`;
+    card.innerHTML = `
+      <div class="team-name" style="color:${team.color.text}">${esc(team.name)}</div>
+      <div class="team-score" id="score-${i}">$0</div>
+      <div class="score-adjust">
+        <button onclick="event.stopPropagation(); adjustScore(${i}, -100)">-100</button>
+        <button onclick="event.stopPropagation(); adjustScore(${i}, 100)">+100</button>
+      </div>
+    `;
+    card.onclick = () => {
+      if (isHost && !currentQuestion) {
+        const newName = prompt(`Rename ${team.name}:`, team.name);
+        if (newName && newName.trim()) {
+          team.name = newName.trim();
+          card.querySelector('.team-name').textContent = esc(team.name);
+        }
+      }
+    };
+    sb.appendChild(card);
+  });
+
+  // Final Jeopardy + Skip to Scores buttons
+  const btnGroup = document.createElement('div');
+  btnGroup.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-left:12px;';
+  const fjBtn = document.createElement('button');
+  fjBtn.className = 'btn btn-gold btn-small';
+  fjBtn.textContent = 'Final Jeopardy';
+  fjBtn.onclick = startFinalJeopardy;
+  const skipBtn = document.createElement('button');
+  skipBtn.className = 'btn btn-outline btn-small';
+  skipBtn.textContent = 'Skip to Scores';
+  skipBtn.style.fontSize = '0.75rem';
+  skipBtn.onclick = () => { if (confirm('End the game and show final scores?')) showGameOver(); };
+  btnGroup.appendChild(fjBtn);
+  btnGroup.appendChild(skipBtn);
+  sb.appendChild(btnGroup);
+}
+
+function adjustScore(teamIndex, amount) {
+  if (teamIndex < 0 || teamIndex >= teams.length) return;
+  teams[teamIndex].score += amount;
+  updateScoreboard();
+}
+
+function updateScoreboard() {
+  teams.forEach((team, i) => {
+    const el = document.getElementById(`score-${i}`);
+    if (el) el.textContent = `$${team.score.toLocaleString()}`;
+  });
+  broadcast({ type: 'scoreUpdate', scores: teams.map(t => t.score) });
+}
+
+function updateTurnIndicator() {
+  const container = document.getElementById('turn-indicator-container');
+  if (!container) return;
+  if (lastCorrectTeam >= 0 && teams[lastCorrectTeam]) {
+    const team = teams[lastCorrectTeam];
+    container.innerHTML = `<div class="turn-indicator"
+      style="background:${team.color.bg};color:${team.color.text};border:1px solid ${team.color.border};">
+      ${esc(team.name)}'s pick</div>`;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+// ========================================================
+//  QUESTION FLOW
+// ========================================================
+function selectCell(col, row) {
+  const key = `${col}-${row}`;
+  if (usedCells.has(key)) return;
+  usedCells.add(key);
+  questionsRemaining--;
+
+  const cell = document.querySelector(`.cell[data-col="${col}"][data-row="${row}"]`);
+  if (cell) cell.classList.add('used');
+
+  currentQuestion = gameBoard[col].questions[row];
+  currentValue = VALUES[row];
+  currentCategory = gameBoard[col].name;
+  buzzQueue = [];
+  activeTeamIndex = -1;
+  isDailyDouble = dailyDoubles.has(key);
+
+  if (isDailyDouble) {
+    showDailyDouble();
+    return;
+  }
+
+  showQuestion();
+}
+
+function showQuestion() {
+  document.getElementById('q-category').textContent = currentCategory;
+  document.getElementById('q-value').textContent = isDailyDouble ? `Daily Double — $${ddWager.toLocaleString()} wager` : `$${currentValue}`;
+  document.getElementById('q-text').textContent = currentQuestion.q;
+  document.getElementById('q-answer').textContent = currentQuestion.a;
+  document.getElementById('q-answer').classList.remove('revealed');
+  document.getElementById('buzz-queue').innerHTML = '';
+  document.getElementById('buzz-indicator').classList.add('hidden');
+  document.getElementById('btn-correct').style.display = isDailyDouble ? '' : 'none';
+  document.getElementById('btn-wrong').style.display = isDailyDouble ? '' : 'none';
+
+  // Host flow hint
+  if (isDailyDouble) {
+    document.getElementById('host-hint').textContent = `${teams[activeTeamIndex]?.name || 'Team'} answers. Mark Correct or Wrong.`;
+  } else {
+    document.getElementById('host-hint').textContent = 'Read the question aloud, then click "Open Buzzers" to let teams buzz in.';
+  }
+
+  buzzerOpen = false;
+  showScreen('question-overlay');
+  playReveal();
+
+  broadcast({ type: 'question', text: currentQuestion.q, category: currentCategory, value: currentValue });
+}
+
+function openBuzzer() {
+  buzzerOpen = true;
+  buzzQueue = [];
+  document.getElementById('buzz-queue').innerHTML = '';
+  document.getElementById('buzz-indicator').classList.add('hidden');
+  document.getElementById('host-hint').textContent = 'Waiting for a team to buzz in...';
+  broadcast({ type: 'buzzerOpen' });
+
+  if (manualMode) {
+    const qi = document.getElementById('buzz-indicator');
+    qi.classList.remove('hidden');
+    qi.innerHTML = teams.map((t, i) =>
+      `<button class="btn btn-small" style="background:${t.color.border};color:#fff;margin:4px"
+        onclick="manualBuzz(${i})">${esc(t.name)}</button>`
+    ).join('');
+  }
+}
+
+function manualBuzz(teamIndex) {
+  activeTeamIndex = teamIndex;
+  buzzerOpen = false;
+  showBuzzWinner(teams[teamIndex].name, teamIndex);
+}
+
+function showBuzzWinner(name, teamIndex) {
+  buzzerOpen = false;
+  broadcast({ type: 'buzzerClose' });
+
+  const bi = document.getElementById('buzz-indicator');
+  bi.classList.remove('hidden');
+  bi.style.background = teams[teamIndex]?.color.bg || 'var(--card)';
+  bi.style.border = `2px solid ${teams[teamIndex]?.color.border || '#fff'}`;
+  bi.style.color = teams[teamIndex]?.color.text || '#fff';
+  bi.textContent = `${name} buzzed in!`;
+
+  document.getElementById('btn-correct').style.display = '';
+  document.getElementById('btn-wrong').style.display = '';
+  document.getElementById('host-hint').textContent = 'Was their answer correct or wrong?';
+
+  playBuzz();
+}
+
+function renderBuzzQueue() {
+  const el = document.getElementById('buzz-queue');
+  el.innerHTML = buzzQueue.map(b => `<div class="buzz-chip">${esc(b.name)}</div>`).join('');
+}
+
+function markCorrect() {
+  if (activeTeamIndex < 0) return;
+  teams[activeTeamIndex].score += (ddWager > 0 ? ddWager : currentValue);
+  lastCorrectTeam = activeTeamIndex;
+  updateScoreboard();
+  playCorrect();
+  highlightScoreCard(activeTeamIndex, 'var(--correct)');
+  ddWager = 0;
+  isDailyDouble = false;
+  revealAnswer();
+  document.getElementById('host-hint').textContent = 'Click "Back to Board" to continue.';
+}
+
+function markWrong() {
+  if (activeTeamIndex < 0) return;
+  teams[activeTeamIndex].score -= (ddWager > 0 ? ddWager : currentValue);
+  updateScoreboard();
+  playWrong();
+  highlightScoreCard(activeTeamIndex, 'var(--wrong)');
+
+  // Daily Double: only one team answers — end the question
+  if (isDailyDouble) {
+    ddWager = 0;
+    isDailyDouble = false;
+    document.getElementById('btn-correct').style.display = 'none';
+    document.getElementById('btn-wrong').style.display = 'none';
+    activeTeamIndex = -1;
+    document.getElementById('host-hint').textContent = 'Daily Double missed! Show the answer or go back to the board.';
+    return;
+  }
+
+  // Regular question: move to next team in buzz queue
+  if (buzzQueue.length > 1) {
+    buzzQueue.shift();
+    const next = buzzQueue[0];
+    activeTeamIndex = next.team;
+    showBuzzWinner(next.name, next.team);
+    renderBuzzQueue();
+  } else {
+    ddWager = 0;
+    document.getElementById('btn-correct').style.display = 'none';
+    document.getElementById('btn-wrong').style.display = 'none';
+    activeTeamIndex = -1;
+    document.getElementById('host-hint').textContent = 'No one got it. Show the answer or open buzzers again.';
+    if (manualMode) openBuzzer();
+  }
+}
+
+function revealAnswer() {
+  document.getElementById('q-answer').classList.add('revealed');
+}
+
+function closeQuestion() {
+  buzzerOpen = false;
+  currentQuestion = null;
+  ddWager = 0;
+  isDailyDouble = false;
+  broadcast({ type: 'questionDone' });
+  showScreen('game-board');
+  updateTurnIndicator();
+
+  if (questionsRemaining <= 0) {
+    setTimeout(() => {
+      if (confirm('The board is clear! Start Final Jeopardy?')) startFinalJeopardy();
+    }, 500);
+  }
+}
+
+function highlightScoreCard(index, color) {
+  const cards = document.querySelectorAll('.score-card');
+  if (cards[index]) {
+    cards[index].style.boxShadow = `0 0 20px ${color}`;
+    setTimeout(() => cards[index].style.boxShadow = '', 1500);
+  }
+}
+
+// ========================================================
+//  DAILY DOUBLE
+// ========================================================
+function showDailyDouble() {
+  playDailyDouble();
+
+  document.getElementById('dd-team-name').innerHTML = teams.map((t, i) =>
+    `<button class="btn btn-small" style="background:${t.color.border};color:#fff;margin:4px${i === 0 ? ';box-shadow:0 0 10px ' + t.color.border : ''}"
+      onclick="selectDDTeam(${i}, this)">${esc(t.name)}</button>`
+  ).join('');
+
+  ddTeamIndex = 0;
+  updateDDMaxWager();
+  document.getElementById('dd-wager').value = '';
+  showScreen('daily-double-overlay');
+}
+
+function selectDDTeam(index, btn) {
+  ddTeamIndex = index;
+  document.querySelectorAll('#dd-team-name button').forEach(b => b.style.boxShadow = '');
+  btn.style.boxShadow = `0 0 10px ${teams[index].color.border}`;
+  updateDDMaxWager();
+}
+
+function updateDDMaxWager() {
+  const teamScore = teams[ddTeamIndex]?.score || 0;
+  const maxWager = Math.max(teamScore, currentValue);
+  document.getElementById('dd-max-wager').textContent = `${teams[ddTeamIndex]?.name || 'Team'}'s score: $${teamScore.toLocaleString()} — Max wager: $${maxWager.toLocaleString()}`;
+  document.getElementById('dd-wager').max = maxWager;
+}
+
+function submitDailyDouble() {
+  const teamScore = teams[ddTeamIndex]?.score || 0;
+  const maxWager = Math.max(teamScore, currentValue);
+  ddWager = Math.max(0, Math.min(parseInt(document.getElementById('dd-wager').value) || 0, maxWager));
+  activeTeamIndex = ddTeamIndex;
+  isDailyDouble = true;
+
+  showQuestion();
+
+  document.getElementById('btn-correct').style.display = '';
+  document.getElementById('btn-wrong').style.display = '';
+
+  const bi = document.getElementById('buzz-indicator');
+  bi.classList.remove('hidden');
+  bi.style.background = teams[ddTeamIndex].color.bg;
+  bi.style.border = `2px solid ${teams[ddTeamIndex].color.border}`;
+  bi.style.color = teams[ddTeamIndex].color.text;
+  bi.textContent = `${teams[ddTeamIndex].name} — Wager: $${ddWager.toLocaleString()}`;
+}
+
+// ========================================================
+//  FINAL JEOPARDY
+// ========================================================
+function startFinalJeopardy() {
+  showScreen('final-jeopardy');
+  finalWagers = {};
+  finalAnswers = {};
+
+  broadcast({ type: 'finalStart', category: activeFinalJeopardy.category });
+
+  const phase = document.getElementById('fj-phase');
+  phase.innerHTML = `
+    <div class="final-category">${esc(activeFinalJeopardy.category)}</div>
+    <h2 style="margin-top: 20px;">Final Jeopardy</h2>
+    <p style="color:var(--text-dim); margin: 16px 0;">Players are submitting their wagers...</p>
+    ${manualMode ? teams.map((t, i) => `
+      <div style="margin: 8px; display:flex; align-items:center; gap:8px; justify-content:center;">
+        <span style="color:${t.color.text}; font-weight:700;">${esc(t.name)} ($${t.score.toLocaleString()}):</span>
+        <input type="number" id="fj-wager-${i}" style="width:100px; padding:8px; border-radius:8px;
+          border:2px solid ${t.color.border}; background:var(--card); color:var(--text);
+          font-size:1rem; text-align:center;" min="0" max="${Math.max(t.score, 0)}" placeholder="$0">
+      </div>
+    `).join('') : ''}
+    <button class="btn btn-gold" style="margin-top: 20px;" onclick="showFinalQuestion()">Show Question</button>
+  `;
+}
+
+function showFinalQuestion() {
+  if (manualMode) {
+    teams.forEach((t, i) => {
+      const input = document.getElementById(`fj-wager-${i}`);
+      const amount = parseInt(input?.value) || 0;
+      finalWagers[`team-${i}`] = { name: t.name, team: i, amount: Math.max(0, Math.min(amount, Math.max(t.score, 0))) };
+    });
+  }
+
+  broadcast({ type: 'finalQuestion', text: activeFinalJeopardy.q });
+
+  const phase = document.getElementById('fj-phase');
+  phase.innerHTML = `
+    <div class="final-category">${esc(activeFinalJeopardy.category)}</div>
+    <div class="final-question" style="margin: 24px 0;">${esc(activeFinalJeopardy.q)}</div>
+    <div class="final-timer" id="fj-timer">30</div>
+    <p style="color:var(--text-dim);">Players are answering...</p>
+    <button class="btn btn-gold" style="margin-top: 16px;" onclick="endFinalJeopardy()">Reveal Answers</button>
+  `;
+
+  playThinkMusic();
+
+  let seconds = 30;
+  fjTimerInterval = setInterval(() => {
+    seconds--;
+    const el = document.getElementById('fj-timer');
+    if (!el) { clearInterval(fjTimerInterval); stopThinkMusic(); return; }
+    el.textContent = seconds;
+    if (seconds <= 10) el.classList.add('warning');
+    if (seconds <= 0) {
+      clearInterval(fjTimerInterval);
+      stopThinkMusic();
+      // Auto-advance to reveal
+      endFinalJeopardy();
+    }
+  }, 1000);
+}
+
+function endFinalJeopardy() {
+  if (fjTimerInterval) { clearInterval(fjTimerInterval); fjTimerInterval = null; }
+  stopThinkMusic();
+
+  const phase = document.getElementById('fj-phase');
+  let reveals = '';
+
+  teams.forEach((team, i) => {
+    let wager = 0, answer = '(no answer)';
+
+    Object.entries(finalWagers).forEach(([pid, fw]) => {
+      if (fw.team === i) wager = fw.amount;
+    });
+    Object.entries(finalAnswers).forEach(([pid, fa]) => {
+      if (fa.team === i) answer = fa.answer;
+    });
+
+    if (manualMode) {
+      const fw = finalWagers[`team-${i}`];
+      if (fw) wager = fw.amount;
+      answer = '(judge manually)';
+    }
+
+    reveals += `
+      <div class="final-reveal-card" id="fj-reveal-${i}" style="border:2px solid ${team.color.border}">
+        <div style="font-weight:700; color:${team.color.text}">${esc(team.name)}</div>
+        <div style="color:var(--text-dim); font-size:0.85rem; margin:4px 0;">Wager: $${wager.toLocaleString()}</div>
+        <div style="font-size:1.1rem; margin:8px 0;">${esc(answer)}</div>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+          <button class="btn btn-small" style="background:var(--correct);color:#1a1a2e"
+            onclick="judgeFinal(${i}, true, ${wager})">Correct</button>
+          <button class="btn btn-small" style="background:var(--wrong);color:#fff"
+            onclick="judgeFinal(${i}, false, ${wager})">Wrong</button>
+        </div>
+      </div>
+    `;
+  });
+
+  phase.innerHTML = `
+    <div class="final-category">${esc(activeFinalJeopardy.category)}</div>
+    <div style="margin: 12px 0; font-size: 1.2rem; color: var(--correct); font-weight: 700;">
+      Answer: ${esc(activeFinalJeopardy.a)}
+    </div>
+    <div class="final-reveals">${reveals}</div>
+    <button class="btn btn-gold" style="margin-top: 24px;" onclick="showGameOver()">Final Scores</button>
+  `;
+}
+
+function judgeFinal(teamIndex, correct, wager) {
+  if (correct) {
+    teams[teamIndex].score += wager;
+    playCorrect();
+    document.getElementById(`fj-reveal-${teamIndex}`).classList.add('correct');
+  } else {
+    teams[teamIndex].score -= wager;
+    playWrong();
+    document.getElementById(`fj-reveal-${teamIndex}`).classList.add('incorrect');
+  }
+  updateScoreboard();
+}
+
+function showGameOver() {
+  const sorted = [...teams].sort((a, b) => b.score - a.score);
+  const standingsEl = document.getElementById('final-standings');
+  const medals = ['&#x1f3c6;', '&#x1f948;', '&#x1f949;'];
+
+  standingsEl.innerHTML = sorted.map((team, i) => `
+    <div class="standing-row fade-in" style="animation-delay: ${i * 0.2}s; border: 1px solid ${team.color.border}">
+      <div class="standing-rank">${medals[i] || `#${i + 1}`}</div>
+      <div class="standing-name" style="color: ${team.color.text}">${esc(team.name)}</div>
+      <div class="standing-score">$${team.score.toLocaleString()}</div>
+    </div>
+  `).join('');
+
+  showScreen('game-over');
+  broadcast({ type: 'gameOver' });
+  launchConfetti();
+}
+
+// ========================================================
+//  CONFETTI
+// ========================================================
+function launchConfetti() {
+  const colors = ['#ff6b9d', '#4ecdc4', '#a855f7', '#ffd700', '#60a5fa', '#34d399'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.cssText = `
+      left: ${Math.random() * 100}vw; top: -20px;
+      width: ${6 + Math.random() * 8}px; height: ${6 + Math.random() * 8}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      opacity: ${0.7 + Math.random() * 0.3};
+    `;
+    document.body.appendChild(el);
+    const duration = 2000 + Math.random() * 3000;
+    const drift = (Math.random() - 0.5) * 200;
+    el.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${drift}px,100vh) rotate(${360 + Math.random() * 360}deg)`, opacity: 0 },
+    ], { duration, easing: 'cubic-bezier(0.25,0.46,0.45,0.94)' }).onfinish = () => el.remove();
+  }
+}
+
+// ========================================================
+//  UTILITIES
+// ========================================================
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ========================================================
+//  AUTO-JOIN FROM URL
+// ========================================================
+(function init() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('join')) showJoin();
+})();
+</script>
+</body>
+</html>
