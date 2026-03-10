@@ -428,13 +428,13 @@ html, body {
 </div>
 
 <!-- ==================== TUTORIAL OVERLAY ==================== -->
-<div id="tutorial-overlay" style="display:none; position:fixed; inset:0; z-index:9999;">
-  <div id="tutorial-backdrop" style="position:absolute; inset:0; background:rgba(0,0,0,0.7);"></div>
+<div id="tutorial-overlay" style="display:none; position:fixed; inset:0; z-index:9999; pointer-events:none;">
+  <div id="tutorial-backdrop" style="position:absolute; inset:0; background:rgba(0,0,0,0.45); pointer-events:none;"></div>
   <div id="tutorial-card" style="
     position:absolute; bottom:24px; left:16px; right:16px;
     background:var(--card); border:2px solid var(--gold); border-radius:16px;
     padding:20px; z-index:10000; max-width:500px; margin:0 auto;
-    box-shadow: 0 0 40px rgba(251,191,36,0.3);
+    box-shadow: 0 0 40px rgba(251,191,36,0.3); pointer-events:auto;
   ">
     <div style="font-size:0.7rem; color:var(--gold); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">
       Tutorial <span id="tutorial-step-num">1</span>/<span id="tutorial-step-total">7</span>
@@ -1013,7 +1013,8 @@ function changeTeamCount(delta) {
 }
 
 function getTeamNames() {
-  return Array.from({ length: teamCount }, (_, i) => `Team ${i + 1}`);
+  const cards = document.querySelectorAll('.team-roster-card h4');
+  return Array.from({ length: teamCount }, (_, i) => cards[i]?.textContent || `Team ${i + 1}`);
 }
 
 function renderTeamRoster() {
@@ -1037,7 +1038,10 @@ function renderTeamRoster() {
       const h4 = card.querySelector('h4');
       const current = h4.textContent;
       const newName = prompt(`Rename team:`, current);
-      if (newName && newName.trim()) h4.textContent = newName.trim();
+      if (newName && newName.trim()) {
+        h4.textContent = newName.trim();
+        broadcast({ type: 'teamsUpdated', count: teamCount, names: getTeamNames() });
+      }
     };
     roster.appendChild(card);
   }
@@ -1428,6 +1432,7 @@ function submitFinalAnswer() {
 // ========================================================
 function startGame(manual = false) {
   manualMode = manual;
+  usedCells.clear();
 
   // Build teams
   teams = [];
@@ -1654,6 +1659,7 @@ function manualBuzz(teamIndex) {
   activeTeamIndex = teamIndex;
   buzzerOpen = false;
   showBuzzWinner(teams[teamIndex].name, teamIndex);
+  tutorialActionCompleted('buzz-in');
 }
 
 function showBuzzWinner(name, teamIndex) {
@@ -2031,10 +2037,18 @@ const TUTORIAL_STEPS = [
         { name: 'Team Rattle', score: 0, color: TEAM_COLORS[1] },
         { name: 'Team Ducky', score: 0, color: TEAM_COLORS[2] },
       ];
+      usedCells.clear();
       dailyDoubles.clear();
       dailyDoubles.add('2-2'); // one predictable DD for the tutorial
       questionsRemaining = 30;
       lastCorrectTeam = -1;
+      currentQuestion = null;
+      buzzerOpen = false;
+      buzzQueue = [];
+      activeTeamIndex = -1;
+      ddWager = 0;
+      isDailyDouble = false;
+      lastScoreChange = null;
       buildGameBoard();
       buildBoard();
       buildScoreboard();
@@ -2043,30 +2057,32 @@ const TUTORIAL_STEPS = [
   },
   {
     title: 'The Game Board',
-    body: 'This is what your TV/projector shows. 6 categories, 5 values each ($200–$1000). Harder questions are worth more. Try tapping a $200 tile now!',
+    body: 'This is what your TV/projector shows. 6 categories, 5 values each ($200\u2013$1000). Harder questions are worth more. Try tapping any tile now!',
     highlight: '#board-grid',
     waitForAction: 'question-opened',
   },
   {
-    title: 'Question Screen',
-    body: 'Read the question aloud to the room. In a real game, you\'d click "Open Buzzers" and players buzz in on their phones. In manual mode (and this tutorial), you pick which team answered. Try tapping a team name below the question!',
-    highlight: '#host-controls',
+    title: 'Buzz In',
+    body: 'In a real game you\'d click "Open Buzzers" and players buzz on their phones. In manual mode, team buttons appear instead \u2014 tap one now to simulate a buzz-in!',
+    highlight: '#buzz-indicator',
+    setup() { openBuzzer(); },
+    waitForAction: 'buzz-in',
   },
   {
     title: 'Correct or Wrong?',
-    body: 'After a team answers, tap Correct to award points or Wrong to deduct them. Try marking someone Correct now!',
+    body: 'Now mark the answer. Tap Correct to award points or Wrong to deduct them. Try it!',
     highlight: '#btn-correct, #btn-wrong',
     waitForAction: 'score-changed',
   },
   {
-    title: 'Undo & Scoring',
-    body: 'Made a mistake? The Undo button reverses the last score change. Points show on the scoreboard at the top. Press "Back to Board" to continue to the next question.',
+    title: 'Undo & Back to Board',
+    body: 'Made a mistake? The Undo button reverses the last score change. Points show on the scoreboard at the top.\n\nPress "Back to Board" to continue to the next question.',
     highlight: '#btn-undo',
     waitForAction: 'question-closed',
   },
   {
     title: 'Daily Doubles',
-    body: 'Two random tiles are Daily Doubles — when revealed, one team wagers before answering. Look for the tile at row 3, column 3 on this practice board. Try clicking it!',
+    body: 'Two random tiles are Daily Doubles \u2014 one team wagers before answering. There\'s one hidden in this board at the 3rd category, $600. Try clicking it!',
     highlight: '#board-grid',
     waitForAction: 'daily-double',
   },
@@ -2094,18 +2110,20 @@ function showTutorialStep() {
   document.getElementById('tutorial-body').textContent = step.body;
 
   const nextBtn = document.getElementById('tutorial-next');
+  const skipBtn = document.getElementById('tutorial-skip');
   if (step.finalStep) {
     nextBtn.textContent = 'Done';
-    document.getElementById('tutorial-skip').style.display = 'none';
+    skipBtn.style.display = 'none';
   } else if (step.waitForAction) {
     nextBtn.textContent = 'Waiting...';
     nextBtn.disabled = true;
     nextBtn.style.opacity = '0.4';
+    skipBtn.style.display = '';
   } else {
     nextBtn.textContent = 'Next';
     nextBtn.disabled = false;
     nextBtn.style.opacity = '1';
-    document.getElementById('tutorial-skip').style.display = '';
+    skipBtn.style.display = '';
   }
 
   // Highlight target element
@@ -2141,13 +2159,30 @@ function endTutorial() {
   tutorialActive = false;
   document.getElementById('tutorial-overlay').style.display = 'none';
   document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
-  // Reset game state
+  // Reset all game state
   isHost = false;
   manualMode = false;
   teams = [];
   gameBoard = [];
+  usedCells.clear();
+  dailyDoubles.clear();
+  currentQuestion = null;
+  buzzerOpen = false;
+  buzzQueue = [];
+  activeTeamIndex = -1;
+  ddTeamIndex = -1;
+  ddWager = 0;
+  isDailyDouble = false;
+  lastCorrectTeam = -1;
+  lastScoreChange = null;
+  questionsRemaining = 30;
+  // Clean up peer/connections safely
+  Object.values(connections).forEach(c => { try { c.conn.close(); } catch(e) {} });
   connections = {};
+  if (peer) { try { peer.destroy(); } catch(e) {} }
   peer = null;
+  // Remove manual mode banner if present
+  document.querySelectorAll('.manual-banner').forEach(el => el.remove());
   showScreen('welcome');
 }
 
