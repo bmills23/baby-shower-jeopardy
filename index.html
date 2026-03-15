@@ -137,17 +137,6 @@ html, body {
   flex-direction: column; align-items: center; justify-content: center; gap: 20px;
   padding: 24px; text-align: center;
 }
-.team-pick-grid {
-  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
-  max-width: 400px;
-}
-.team-pick-btn {
-  padding: 20px 28px; border-radius: var(--radius); border: 3px solid transparent;
-  font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
-  min-width: 140px; text-align: center;
-}
-.team-pick-btn:active { transform: scale(0.95); }
-.team-pick-btn.selected { box-shadow: 0 0 20px rgba(255,255,255,0.2); transform: scale(1.05); }
 
 /* ===== GAME BOARD ===== */
 #game-board { flex-direction: column; padding: 12px; gap: 8px; }
@@ -412,6 +401,40 @@ html, body {
   .score-card .team-score { font-size: 1rem; }
   .score-adjust button { padding: 1px 6px; font-size: 0.65rem; }
 }
+
+/* ===== HOST PHONE VIEW ===== */
+#host-phone {
+  flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 20px; gap: 12px; overflow-y: auto;
+}
+.hp-header { color: var(--accent-pink); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; }
+.hp-meta { color: var(--accent-blue); font-size: 0.95rem; font-weight: 600; text-align: center; }
+.hp-question { color: var(--text); font-size: 1.1rem; text-align: center; max-width: 400px; line-height: 1.5; padding: 12px; }
+.hp-answer-box {
+  background: rgba(52, 211, 153, 0.15); border: 2px solid var(--correct);
+  border-radius: 12px; padding: 16px 20px; text-align: center;
+  font-size: 1.3rem; font-weight: 700; color: var(--correct);
+  width: 100%; max-width: 400px;
+}
+.hp-waiting { color: var(--text-dim); font-size: 1rem; text-align: center; padding: 40px 20px; }
+.hp-scoreboard { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; width: 100%; max-width: 400px; }
+
+/* ===== ADD PLAYERS OVERLAY ===== */
+#add-players-overlay {
+  position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,0.85);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 24px; text-align: center;
+}
+#add-players-overlay.active { display: flex; }
+
+/* ===== PLAYER FINAL SCOREBOARD ===== */
+.pf-scoreboard { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0; }
+.pf-your-score { font-size: 1.4rem; font-weight: 800; color: var(--gold); margin: 4px 0; }
+
+/* ===== QR PAIR (lobby) ===== */
+.qr-pair { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+.qr-section { text-align: center; }
+.qr-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -420,6 +443,14 @@ html, body {
 <div id="welcome" class="screen active">
   <h1>Baby Shower<br>Jeopardy!</h1>
   <p>A fun trivia game for the whole party. One host controls the board on the big screen, everyone else buzzes in on their phones.</p>
+  <div style="max-width:300px; width:100%;">
+    <input type="text" id="custom-room-code" placeholder="Room name (optional)"
+      maxlength="20" style="width:100%; padding:12px 16px; border-radius:var(--radius);
+      border:2px solid rgba(255,255,255,0.1); background:var(--card); color:var(--text);
+      font-size:1rem; text-align:center; letter-spacing:2px; text-transform:uppercase;"
+      oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase()">
+    <div style="color:var(--text-dim); font-size:0.75rem; margin-top:4px;">Pick a name to create a shareable link in advance</div>
+  </div>
   <div class="btn-group">
     <button class="btn btn-host" onclick="ensureAudio(); setupHost()">Host Game</button>
     <button class="btn btn-join" onclick="ensureAudio(); showJoin()">Join Game</button>
@@ -452,7 +483,16 @@ html, body {
 <div id="host-lobby" class="screen">
   <h2>Game Room</h2>
   <div class="room-code-display" id="room-code-display"></div>
-  <div id="qr-container"></div>
+  <div class="qr-pair">
+    <div class="qr-section">
+      <div class="qr-label" style="color:var(--accent-blue);">Players scan here</div>
+      <div id="qr-container"></div>
+    </div>
+    <div class="qr-section">
+      <div class="qr-label" style="color:var(--accent-pink);">Host's phone (answers)</div>
+      <div id="host-qr-container"></div>
+    </div>
+  </div>
   <div class="room-url" id="room-url" onclick="copyRoomUrl()" title="Tap to copy"></div>
   <div id="host-connection-status" class="status-connecting" style="margin: 8px 0; font-size: 0.85rem;">Setting up room...</div>
   <div class="team-setup">
@@ -488,11 +528,10 @@ html, body {
   <span class="back-link" onclick="showScreen('welcome')">Back</span>
 </div>
 
-<!-- ==================== PLAYER TEAM PICKER ==================== -->
+<!-- ==================== PLAYER TEAM ASSIGNMENT ==================== -->
 <div id="player-team-pick" class="screen">
-  <h2 style="color: var(--accent-blue);">Pick Your Team</h2>
-  <p style="color: var(--text-dim); max-width: 300px;">Tap a team to join. You can switch until the game starts.</p>
-  <div class="team-pick-grid" id="team-pick-grid"></div>
+  <h2 style="color: var(--accent-blue);">You're In!</h2>
+  <div id="team-assignment-card" style="margin: 20px 0; padding: 20px 32px; border-radius: 12px; text-align: center; font-size: 1.4rem; font-weight: 800;"></div>
   <div id="pick-status" style="color: var(--text-dim); font-size: 0.9rem;">Waiting for the host to start...</div>
 </div>
 
@@ -546,6 +585,8 @@ html, body {
 <!-- ==================== PLAYER FINAL JEOPARDY ==================== -->
 <div id="player-final" class="screen">
   <h2 style="color:var(--gold);">Final Jeopardy</h2>
+  <div class="pf-your-score" id="pf-your-score"></div>
+  <div class="pf-scoreboard" id="pf-scoreboard"></div>
   <div class="final-category" id="pf-category"></div>
   <div id="pf-phase-wager">
     <p style="color:var(--text-dim); margin-bottom: 12px;">How much will you wager?</p>
@@ -562,6 +603,25 @@ html, body {
   <div id="pf-phase-waiting" class="hidden">
     <p style="color:var(--correct); font-size:1.2rem; font-weight:700;">Answer submitted! Good luck!</p>
   </div>
+</div>
+
+<!-- ==================== HOST PHONE VIEW ==================== -->
+<div id="host-phone" class="screen">
+  <div class="hp-header">Host Answer View</div>
+  <div class="hp-scoreboard" id="hp-scoreboard"></div>
+  <div id="hp-content">
+    <div class="hp-waiting">Waiting for the game to start...</div>
+  </div>
+</div>
+
+<!-- ==================== ADD PLAYERS OVERLAY ==================== -->
+<div id="add-players-overlay">
+  <h2 style="color:var(--accent-blue);">Add Players</h2>
+  <div class="room-code-display" id="add-players-code"></div>
+  <div id="add-players-qr"></div>
+  <div class="room-url" id="add-players-url" onclick="copyAddPlayersUrl()" title="Tap to copy" style="max-width:400px;"></div>
+  <p style="color:var(--text-dim); font-size:0.9rem; max-width:300px;">New players can scan the QR code or enter the room code to join mid-game</p>
+  <button class="btn btn-outline" onclick="hideAddPlayers()">Close</button>
 </div>
 
 <!-- ==================== FINAL JEOPARDY (HOST) ==================== -->
@@ -748,6 +808,23 @@ const FINAL_JEOPARDY_POOL = [
   { category: "Baby Sleep", q: "In the first year of life, a baby spends more total hours doing this than anything else, averaging about 14-17 hours per day as a newborn.", a: "Sleeping" },
   { category: "Baby Food", q: "This sweet substance, produced by bees, should never be given to a baby under 12 months old due to the risk of infant botulism.", a: "Honey" },
   { category: "Baby History", q: "Before disposable diapers were invented in 1948, most families used this material that had to be washed and reused.", a: "Cloth (muslin or cotton cloth diapers)" },
+  { category: "Baby Anatomy", q: "Babies are born without these hard, flat bones in their legs — they start as soft cartilage and don't fully harden until around age 3 to 5.", a: "Kneecaps (patellae)" },
+  { category: "Baby Reflexes", q: "When submerged in water, newborns instinctively hold their breath and slow their heart rate thanks to this reflex, shared with seals and dolphins, that fades around 6 months.", a: "The mammalian diving reflex (bradycardic response)" },
+  { category: "Baby Tears", q: "Newborns cry loudly from birth, but they don't actually produce these until they are about 2 to 3 weeks old.", a: "Tears" },
+  { category: "Baby Strength", q: "A newborn's grasp reflex is so powerful that their tiny hands can support approximately this proportion of their own body weight when gripping a rod.", a: "Their entire body weight" },
+  { category: "Baby Heartbeat", q: "A newborn's heart beats approximately this many times per minute — nearly double the resting rate of a healthy adult.", a: "120 to 160 beats per minute" },
+  { category: "Baby Bonding", q: "Hospitals now place newborns skin-to-skin on their parent's bare chest immediately after birth in a practice called this, named after a pouch-carrying animal.", a: "Kangaroo care" },
+  { category: "Baby Breathing", q: "For approximately the first 4 months of life, babies are 'obligate nasal breathers,' meaning they can only breathe through this body part.", a: "Their nose" },
+  { category: "Baby Hair", q: "The fine, downy hair that covers a fetus in the womb — and sometimes lingers on premature babies — is called this, from the Latin word for 'wool.'", a: "Lanugo" },
+  { category: "Baby Stomach", q: "On the very first day of life, a newborn's stomach is approximately the size of this small fruit.", a: "A cherry (about 5-7 mL)" },
+  { category: "Baby DNA", q: "During pregnancy, some of the baby's cells cross the placenta and can remain in the mother's organs for decades — this phenomenon is called this.", a: "Fetal microchimerism" },
+  { category: "Baby Smell", q: "Studies show that within just this many days of birth, a blindfolded mother can reliably identify her own baby using only this sense.", a: "3 days — by smell" },
+  { category: "Baby Laughter", q: "While babies smile socially as early as 6 weeks, the average baby doesn't produce their first real laugh until approximately this age.", a: "3 to 4 months" },
+  { category: "Baby Diapers", q: "In the first year of life alone, the average baby goes through approximately this staggering number of diapers.", a: "About 2,500 to 3,000" },
+  { category: "Baby Superpowers", q: "Until about 10 months of age, babies can distinguish between all 800 of the world's speech sounds — but then lose this ability as they specialize in their native language's version of these.", a: "Phonemes (speech sounds)" },
+  { category: "Baby Celebrities", q: "In 1978, this British baby made worldwide headlines as the first human ever born via in vitro fertilization.", a: "Louise Brown" },
+  { category: "Baby Firsts", q: "The first baby born on a commercial airplane, in 1929, was given a lifetime pass on this now-defunct U.S. airline.", a: "Eastern Air Transport (later Eastern Airlines)" },
+  { category: "Baby Survival", q: "The soft spots on a baby's skull, called fontanelles, serve this critical purpose during birth and early brain development.", a: "Allow the skull bones to overlap during delivery and the brain to grow rapidly" },
 ];
 
 const VALUES = [200, 400, 600, 800, 1000];
@@ -798,6 +875,12 @@ const TEAM_COLORS = [
   { bg: 'rgba(251,191,36,0.2)', border: '#fbbf24', text: '#fbbf24', name: 'Gold' },
   { bg: 'rgba(96,165,250,0.2)', border: '#60a5fa', text: '#60a5fa', name: 'Blue' },
   { bg: 'rgba(52,211,153,0.2)', border: '#34d399', text: '#34d399', name: 'Mint' },
+  { bg: 'rgba(251,146,60,0.2)', border: '#fb923c', text: '#fb923c', name: 'Orange' },
+  { bg: 'rgba(244,114,182,0.2)', border: '#f472b6', text: '#f472b6', name: 'Rose' },
+  { bg: 'rgba(129,140,248,0.2)', border: '#818cf8', text: '#818cf8', name: 'Indigo' },
+  { bg: 'rgba(45,212,191,0.2)', border: '#2dd4bf', text: '#2dd4bf', name: 'Cyan' },
+  { bg: 'rgba(163,230,53,0.2)', border: '#a3e635', text: '#a3e635', name: 'Lime' },
+  { bg: 'rgba(232,121,249,0.2)', border: '#e879f9', text: '#e879f9', name: 'Fuchsia' },
 ];
 
 // ========================================================
@@ -826,6 +909,10 @@ let finalAnswers = {};
 let questionsRemaining = 30;
 let lastCorrectTeam = -1;  // Track who picks next
 let fjTimerInterval = null;
+let gameInProgress = false;
+
+// Player state — host viewer
+let isHostViewer = false;
 
 // ── TURN / ICE configuration ──────────────────────────────
 // TURN credentials are fetched from a Cloudflare Worker proxy
@@ -966,7 +1053,8 @@ function showScreen(id) {
 // ========================================================
 async function setupHost() {
   isHost = true;
-  roomCode = generateRoomCode();
+  const custom = document.getElementById('custom-room-code')?.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  roomCode = custom || generateRoomCode();
   document.getElementById('room-code-display').textContent = roomCode;
 
   // Build join URL
@@ -977,6 +1065,8 @@ async function setupHost() {
   urlEl.title = 'Tap to copy link';
 
   renderQR(document.getElementById('qr-container'), url);
+  const hostUrl = `${base}?hostview=${roomCode}`;
+  renderQR(document.getElementById('host-qr-container'), hostUrl);
   renderTeamRoster();
   showScreen('host-lobby');
 
@@ -1006,10 +1096,39 @@ function copyRoomUrl() {
 }
 
 function changeTeamCount(delta) {
-  teamCount = Math.max(2, Math.min(6, teamCount + delta));
+  teamCount = Math.max(2, Math.min(12, teamCount + delta));
   document.getElementById('team-count').textContent = teamCount;
+  reassignAllTeams();
+}
+
+function getSmallestTeam() {
+  const counts = Array(teamCount).fill(0);
+  Object.values(connections).forEach(c => {
+    if (c.team >= 0 && c.team < teamCount) counts[c.team]++;
+  });
+  let minIdx = 0;
+  for (let i = 1; i < teamCount; i++) {
+    if (counts[i] < counts[minIdx]) minIdx = i;
+  }
+  return minIdx;
+}
+
+function reassignAllTeams() {
+  // Reset all to unassigned (skip host viewers)
+  Object.values(connections).forEach(c => { if (!c.isHostView) c.team = -1; });
+  // Reassign in connection order (round-robin by smallest team)
+  const peers = Object.keys(connections);
+  peers.forEach(peer => {
+    connections[peer].team = getSmallestTeam();
+  });
+  // Notify each player of their new assignment
+  const names = getTeamNames();
+  Object.entries(connections).forEach(([peer, c]) => {
+    const teamName = names[c.team] || `Team ${c.team + 1}`;
+    const color = TEAM_COLORS[c.team % TEAM_COLORS.length];
+    c.conn.send({ type: 'teamAssigned', team: c.team, teamName, teamColor: color });
+  });
   renderTeamRoster();
-  broadcast({ type: 'teamsUpdated', count: teamCount, names: getTeamNames() });
 }
 
 function getTeamNames() {
@@ -1040,7 +1159,15 @@ function renderTeamRoster() {
       const newName = prompt(`Rename team:`, current);
       if (newName && newName.trim()) {
         h4.textContent = newName.trim();
-        broadcast({ type: 'teamsUpdated', count: teamCount, names: getTeamNames() });
+        // Re-send each player their assignment with the updated team name
+        const updatedNames = getTeamNames();
+        Object.entries(connections).forEach(([peer, c]) => {
+          if (c.team >= 0) {
+            const tName = updatedNames[c.team] || `Team ${c.team + 1}`;
+            const tColor = TEAM_COLORS[c.team % TEAM_COLORS.length];
+            c.conn.send({ type: 'teamAssigned', team: c.team, teamName: tName, teamColor: tColor });
+          }
+        });
       }
     };
     roster.appendChild(card);
@@ -1093,6 +1220,7 @@ function initHostPeer() {
       const url = `${base}?join=${roomCode}`;
       document.getElementById('room-url').textContent = url;
       renderQR(document.getElementById('qr-container'), url);
+      renderQR(document.getElementById('host-qr-container'), `${base}?hostview=${roomCode}`);
       initHostPeer();
     } else if (err.type === 'unavailable-id') {
       alert('Could not create a game room. Try refreshing the page.');
@@ -1105,14 +1233,34 @@ function initHostPeer() {
 
 function handlePlayerMessage(conn, data) {
   if (data.type === 'join') {
+    // Host viewer connection (sees answers on host's phone)
+    if (data.isHostView) {
+      connections[conn.peer] = { conn, name: data.name, team: -2, isHostView: true };
+      conn.send({ type: 'hostViewAssigned' });
+      if (gameInProgress) {
+        conn.send({ type: 'gameStart', allTeamNames: teams.map(t => t.name), allScores: teams.map(t => t.score) });
+        conn.send({ type: 'scoreUpdate', scores: teams.map(t => t.score) });
+        if (currentQuestion) {
+          conn.send({ type: 'hostQuestion', text: currentQuestion.q, answer: currentQuestion.a, category: currentCategory, value: currentValue });
+        }
+      }
+      return;
+    }
     connections[conn.peer] = { conn, name: data.name, team: -1 };
+    // Auto-assign to the team with fewest members
+    const assignedTeam = getSmallestTeam();
+    connections[conn.peer].team = assignedTeam;
     renderTeamRoster();
-    conn.send({ type: 'joined', roomCode, teamCount, names: getTeamNames() });
-  }
-  if (data.type === 'pickTeam') {
-    if (connections[conn.peer] && data.team >= 0 && data.team < teamCount) {
-      connections[conn.peer].team = data.team;
-      renderTeamRoster();
+    const names = getTeamNames();
+    const teamName = names[assignedTeam] || `Team ${assignedTeam + 1}`;
+    const color = TEAM_COLORS[assignedTeam % TEAM_COLORS.length];
+    conn.send({ type: 'teamAssigned', team: assignedTeam, teamName, teamColor: color });
+    // If game already started, send them right into the game
+    if (gameInProgress) {
+      conn.send({
+        type: 'gameStart', yourTeam: assignedTeam, teamName,
+        allTeamNames: teams.map(t => t.name), allScores: teams.map(t => t.score),
+      });
     }
   }
   if (data.type === 'buzz' && buzzerOpen) {
@@ -1149,6 +1297,14 @@ function broadcast(data) {
   });
 }
 
+function broadcastToHostViewers(data) {
+  Object.values(connections).forEach(c => {
+    if (c.isHostView) {
+      try { c.conn.send(data); } catch (e) {}
+    }
+  });
+}
+
 // ========================================================
 //  PLAYER JOIN
 // ========================================================
@@ -1163,6 +1319,8 @@ function showJoin() {
 let joinTimeout = null;
 let joinRetries = 0;
 const MAX_JOIN_RETRIES = 3;
+let waitingForHost = false;
+let waitingInterval = null;
 
 async function joinGame() {
   const code = document.getElementById('join-code').value.trim().toUpperCase();
@@ -1185,12 +1343,14 @@ async function joinGame() {
 function attemptJoin(code) {
   const statusEl = document.getElementById('connection-status');
   const retryBtn = document.getElementById('retry-btn');
-  if (retryBtn) retryBtn.classList.add('hidden');
-  statusEl.className = 'status-connecting';
-  statusEl.textContent = joinRetries > 0
-    ? `Retrying... (attempt ${joinRetries + 1}/${MAX_JOIN_RETRIES + 1})`
-    : 'Connecting to signaling server...';
-  statusEl.classList.remove('hidden');
+  if (!waitingForHost) {
+    if (retryBtn) retryBtn.classList.add('hidden');
+    statusEl.className = 'status-connecting';
+    statusEl.textContent = joinRetries > 0
+      ? `Retrying... (attempt ${joinRetries + 1}/${MAX_JOIN_RETRIES + 1})`
+      : 'Connecting to signaling server...';
+    statusEl.classList.remove('hidden');
+  }
 
   // Clean up previous peer
   if (peer) { try { peer.destroy(); } catch (e) {} }
@@ -1203,7 +1363,7 @@ function attemptJoin(code) {
     if (joinRetries < MAX_JOIN_RETRIES) {
       joinRetries++;
       attemptJoin(code);
-    } else {
+    } else if (!waitingForHost) {
       statusEl.className = 'status-error';
       statusEl.textContent = 'Could not connect. Make sure the host game is running.';
       if (retryBtn) retryBtn.classList.remove('hidden');
@@ -1220,6 +1380,9 @@ function attemptJoin(code) {
 
     conn.on('open', () => {
       clearTimeout(joinTimeout);
+      // Stop waiting loop if active
+      waitingForHost = false;
+      if (waitingInterval) { clearInterval(waitingInterval); waitingInterval = null; }
       console.log('Connected to host!');
       conn.send({ type: 'join', name: playerName });
       statusEl.className = 'status-connected';
@@ -1252,15 +1415,13 @@ function attemptJoin(code) {
     console.warn('Player peer error:', err.type, err);
     clearTimeout(joinTimeout);
     if (err.type === 'peer-unavailable') {
-      // Host peer ID not found on signaling server
+      // Host peer ID not found — enter waiting mode
       if (joinRetries < MAX_JOIN_RETRIES) {
         joinRetries++;
         statusEl.textContent = 'Host not found, retrying...';
         setTimeout(() => attemptJoin(code), 1500);
-      } else {
-        statusEl.className = 'status-error';
-        statusEl.textContent = 'Host not found. Is the game room open?';
-        if (retryBtn) retryBtn.classList.remove('hidden');
+      } else if (!waitingForHost) {
+        startWaitingForHost(code);
       }
     } else {
       if (joinRetries < MAX_JOIN_RETRIES) {
@@ -1275,17 +1436,60 @@ function attemptJoin(code) {
   });
 }
 
+function startWaitingForHost(code) {
+  waitingForHost = true;
+  const statusEl = document.getElementById('connection-status');
+  const retryBtn = document.getElementById('retry-btn');
+  statusEl.className = 'status-connecting';
+  statusEl.textContent = 'Waiting for the host to start the game...';
+  if (retryBtn) {
+    retryBtn.textContent = 'Stop Waiting';
+    retryBtn.classList.remove('hidden');
+    retryBtn.onclick = stopWaitingForHost;
+  }
+  // Retry every 5 seconds
+  waitingInterval = setInterval(() => {
+    if (!waitingForHost) return;
+    joinRetries = 0;
+    attemptJoin(code);
+  }, 5000);
+}
+
+function stopWaitingForHost() {
+  waitingForHost = false;
+  if (waitingInterval) { clearInterval(waitingInterval); waitingInterval = null; }
+  if (joinTimeout) { clearTimeout(joinTimeout); joinTimeout = null; }
+  if (peer) { try { peer.destroy(); } catch (e) {} }
+  const statusEl = document.getElementById('connection-status');
+  const retryBtn = document.getElementById('retry-btn');
+  statusEl.className = 'status-error';
+  statusEl.textContent = 'Stopped waiting.';
+  if (retryBtn) {
+    retryBtn.textContent = 'Retry Connection';
+    retryBtn.classList.remove('hidden');
+    retryBtn.onclick = () => { joinRetries = 0; attemptJoin(roomCode); };
+  }
+}
+
 function handleHostMessage(conn, data) {
   switch (data.type) {
-    case 'joined':
-      showTeamPicker(data.teamCount, data.names);
+    case 'hostViewAssigned':
+      isHostViewer = true;
+      showScreen('host-phone');
       break;
-    case 'teamsUpdated':
-      if (document.getElementById('player-team-pick').classList.contains('active')) {
-        showTeamPicker(data.count, data.names);
+    case 'teamAssigned':
+      playerTeam = data.team;
+      showTeamAssignment(data.team, data.teamName, data.teamColor);
+      break;
+    case 'gameStart': {
+      if (isHostViewer) {
+        allTeamNames = data.allTeamNames || [];
+        allTeamScores = data.allScores || [];
+        showScreen('host-phone');
+        document.getElementById('hp-content').innerHTML = '<div class="hp-waiting">Game started! Waiting for a question...</div>';
+        renderHostPhoneScoreboard();
+        break;
       }
-      break;
-    case 'gameStart':
       playerTeam = data.yourTeam ?? playerTeam;
       allTeamNames = data.allTeamNames || [];
       allTeamScores = data.allScores || allTeamNames.map(() => 0);
@@ -1300,33 +1504,56 @@ function handleHostMessage(conn, data) {
       setBuzzerState('locked');
       renderPlayerMiniScoreboard();
       break;
+    }
     case 'question':
+      if (isHostViewer) break;
       document.getElementById('player-q-text').textContent = data.text;
       setBuzzerState('locked');
       break;
+    case 'hostQuestion':
+      if (isHostViewer) updateHostPhoneDisplay(data);
+      break;
     case 'buzzerOpen':
+      if (isHostViewer) break;
       setBuzzerState('ready');
       break;
     case 'buzzerClose':
+      if (isHostViewer) break;
       if (myBuzzState !== 'buzzed') setBuzzerState('locked');
       break;
     case 'questionDone':
+      if (isHostViewer) {
+        document.getElementById('hp-content').innerHTML = '<div class="hp-waiting">Waiting for next question...</div>';
+        break;
+      }
       setBuzzerState('locked');
       document.getElementById('player-q-text').textContent = 'Waiting for next question...';
       break;
     case 'scoreUpdate':
       if (data.scores) {
         allTeamScores = data.scores;
-        if (playerTeam >= 0 && data.scores[playerTeam] !== undefined) {
-          playerScore = data.scores[playerTeam];
-          document.getElementById('player-score').textContent = `$${playerScore.toLocaleString()}`;
+        if (isHostViewer) {
+          renderHostPhoneScoreboard();
+        } else {
+          if (playerTeam >= 0 && data.scores[playerTeam] !== undefined) {
+            playerScore = data.scores[playerTeam];
+            document.getElementById('player-score').textContent = `$${playerScore.toLocaleString()}`;
+          }
+          renderPlayerMiniScoreboard();
         }
-        renderPlayerMiniScoreboard();
       }
       break;
     case 'finalStart':
+      if (isHostViewer) break;
+      if (data.scores) allTeamScores = data.scores;
+      if (data.teamNames) allTeamNames = data.teamNames;
+      if (playerTeam >= 0 && allTeamScores[playerTeam] !== undefined) {
+        playerScore = allTeamScores[playerTeam];
+      }
       showScreen('player-final');
       document.getElementById('pf-category').textContent = data.category;
+      document.getElementById('pf-your-score').textContent = `Your team: $${playerScore.toLocaleString()}`;
+      renderFinalScoreboard();
       document.getElementById('pf-phase-wager').classList.remove('hidden');
       document.getElementById('pf-phase-answer').classList.add('hidden');
       document.getElementById('pf-phase-waiting').classList.add('hidden');
@@ -1334,13 +1561,37 @@ function handleHostMessage(conn, data) {
       document.getElementById('pf-wager').value = '';
       document.getElementById('pf-wager').disabled = false;
       break;
+    case 'hostFinalStart':
+      if (isHostViewer) {
+        document.getElementById('hp-content').innerHTML = `
+          <div class="hp-meta">Final Jeopardy</div>
+          <div class="hp-meta" style="font-size:1.1rem;">${esc(data.category)}</div>
+          <div class="hp-answer-box" style="margin-top:16px;">Answer: ${esc(data.answer)}</div>
+          <div class="hp-waiting" style="padding:16px;">Players are wagering...</div>
+        `;
+      }
+      break;
     case 'finalQuestion':
+      if (isHostViewer) break;
       document.getElementById('pf-question').textContent = data.text;
       document.getElementById('pf-phase-wager').classList.add('hidden');
       document.getElementById('pf-phase-answer').classList.remove('hidden');
       document.getElementById('pf-answer').value = '';
       break;
+    case 'hostFinalQuestion':
+      if (isHostViewer) {
+        document.getElementById('hp-content').innerHTML = `
+          <div class="hp-meta">Final Jeopardy</div>
+          <div class="hp-question">${esc(data.text)}</div>
+          <div class="hp-answer-box" style="margin-top:16px;">Answer: ${esc(data.answer)}</div>
+        `;
+      }
+      break;
     case 'gameOver':
+      if (isHostViewer) {
+        document.getElementById('hp-content').innerHTML = '<div class="hp-waiting">Game over! Check the big screen for final scores.</div>';
+        break;
+      }
       showScreen('player-game');
       document.getElementById('player-q-text').textContent = 'Game over! Check the big screen for final scores.';
       setBuzzerState('locked');
@@ -1365,36 +1616,123 @@ function renderPlayerMiniScoreboard() {
 }
 
 // ========================================================
-//  PLAYER TEAM PICKER
+//  HOST PHONE VIEW HELPERS
 // ========================================================
-function showTeamPicker(count, names) {
-  showScreen('player-team-pick');
-  const grid = document.getElementById('team-pick-grid');
-  grid.innerHTML = '';
-
-  for (let i = 0; i < count; i++) {
+function renderHostPhoneScoreboard() {
+  const container = document.getElementById('hp-scoreboard');
+  if (!container || !allTeamNames.length) return;
+  container.innerHTML = allTeamNames.map((name, i) => {
     const color = TEAM_COLORS[i % TEAM_COLORS.length];
-    const btn = document.createElement('button');
-    btn.className = 'team-pick-btn';
-    btn.style.background = color.bg;
-    btn.style.color = color.text;
-    btn.style.borderColor = color.border;
-    btn.textContent = (names && names[i]) || `Team ${i + 1}`;
-    btn.onclick = () => {
-      playerTeam = i;
-      grid.querySelectorAll('.team-pick-btn').forEach(b => {
-        b.classList.remove('selected');
-        b.style.borderColor = 'transparent';
-      });
-      btn.classList.add('selected');
-      btn.style.borderColor = color.border;
-      window.hostConn?.send({ type: 'pickTeam', team: i });
-      document.getElementById('pick-status').textContent =
-        `You're on ${btn.textContent}! Waiting for the host to start...`;
-      document.getElementById('pick-status').style.color = color.text;
-    };
-    grid.appendChild(btn);
-  }
+    const score = allTeamScores[i] || 0;
+    return `<div class="mini-score-chip"
+      style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">
+      ${esc(name)}: $${score.toLocaleString()}</div>`;
+  }).join('');
+}
+
+function updateHostPhoneDisplay(data) {
+  const content = document.getElementById('hp-content');
+  content.innerHTML = `
+    <div class="hp-meta">${esc(data.category)} — $${data.value}</div>
+    <div class="hp-question">${esc(data.text)}</div>
+    <div class="hp-answer-box">Answer: ${esc(data.answer)}</div>
+  `;
+}
+
+// ========================================================
+//  FINAL JEOPARDY PLAYER SCOREBOARD
+// ========================================================
+function renderFinalScoreboard() {
+  const container = document.getElementById('pf-scoreboard');
+  if (!container || !allTeamNames.length) return;
+  container.innerHTML = allTeamNames.map((name, i) => {
+    const color = TEAM_COLORS[i % TEAM_COLORS.length];
+    const score = allTeamScores[i] || 0;
+    const isMine = i === playerTeam;
+    return `<div class="mini-score-chip${isMine ? ' mine' : ''}"
+      style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">
+      ${esc(name)}: $${score.toLocaleString()}</div>`;
+  }).join('');
+}
+
+// ========================================================
+//  ADD PLAYERS MID-GAME
+// ========================================================
+function showAddPlayers() {
+  const base = location.origin !== 'null' ? `${location.origin}${location.pathname}` : location.href.split('?')[0];
+  const url = `${base}?join=${roomCode}`;
+  document.getElementById('add-players-code').textContent = roomCode;
+  document.getElementById('add-players-url').textContent = url;
+  renderQR(document.getElementById('add-players-qr'), url);
+  document.getElementById('add-players-overlay').classList.add('active');
+}
+
+function hideAddPlayers() {
+  document.getElementById('add-players-overlay').classList.remove('active');
+}
+
+function copyAddPlayersUrl() {
+  const url = document.getElementById('add-players-url').textContent;
+  navigator.clipboard?.writeText(url);
+  const el = document.getElementById('add-players-url');
+  const orig = el.textContent;
+  el.textContent = 'Copied!';
+  setTimeout(() => el.textContent = orig, 1500);
+}
+
+// ========================================================
+//  HOST VIEWER JOIN (auto-connect from ?hostview= URL)
+// ========================================================
+async function joinAsHostViewer(code) {
+  roomCode = code;
+  playerName = 'Host';
+  isHostViewer = true;
+
+  await loadTurnCredentials();
+
+  if (peer) { try { peer.destroy(); } catch (e) {} }
+  peer = new Peer(undefined, PEER_CONFIG);
+
+  peer.on('open', () => {
+    const hostId = `bsj-host-${code.toLowerCase()}`;
+    const conn = peer.connect(hostId, { reliable: true });
+
+    conn.on('open', () => {
+      conn.send({ type: 'join', name: 'Host', isHostView: true });
+      conn.on('data', data => handleHostMessage(conn, data));
+      window.hostConn = conn;
+      document.getElementById('hp-content').innerHTML = '<div class="hp-waiting">Connected! Waiting for the game to start...</div>';
+    });
+
+    conn.on('error', err => {
+      console.warn('Host viewer connection error:', err);
+      document.getElementById('hp-content').innerHTML = '<div class="hp-waiting" style="color:var(--wrong);">Connection error. Try refreshing.</div>';
+    });
+
+    conn.on('close', () => {
+      document.getElementById('hp-content').innerHTML = '<div class="hp-waiting" style="color:var(--wrong);">Disconnected from game.</div>';
+    });
+  });
+
+  peer.on('error', err => {
+    console.warn('Host viewer peer error:', err);
+    document.getElementById('hp-content').innerHTML = '<div class="hp-waiting" style="color:var(--wrong);">Could not connect. Is the game room open?</div>';
+  });
+}
+
+// ========================================================
+//  PLAYER TEAM ASSIGNMENT (auto-assigned by host)
+// ========================================================
+function showTeamAssignment(teamIndex, teamName, teamColor) {
+  showScreen('player-team-pick');
+  const color = teamColor || TEAM_COLORS[teamIndex % TEAM_COLORS.length];
+  const card = document.getElementById('team-assignment-card');
+  card.textContent = teamName || `Team ${teamIndex + 1}`;
+  card.style.background = color.bg;
+  card.style.color = color.text;
+  card.style.border = `2px solid ${color.border}`;
+  document.getElementById('pick-status').textContent = 'Waiting for the host to start...';
+  document.getElementById('pick-status').style.color = color.text;
 }
 
 function setBuzzerState(state) {
@@ -1445,12 +1783,7 @@ function startGame(manual = false) {
     });
   }
 
-  // Warn if any connected players haven't picked a team
-  const unassigned = Object.values(connections).filter(c => c.team < 0);
-  if (!manual && unassigned.length > 0) {
-    const names = unassigned.map(c => c.name).join(', ');
-    if (!confirm(`${names} haven't picked a team yet. Start anyway? (They won't be able to buzz in)`)) return;
-  }
+
 
   // Pick 2 random daily doubles (not in $200 row)
   dailyDoubles.clear();
@@ -1462,6 +1795,7 @@ function startGame(manual = false) {
 
   questionsRemaining = 30;
   lastCorrectTeam = -1;
+  gameInProgress = true;
   buildGameBoard();
   buildBoard();
   buildScoreboard();
@@ -1472,6 +1806,10 @@ function startGame(manual = false) {
   const allTeamNamesArr = teams.map(t => t.name);
   const allScoresArr = teams.map(t => t.score);
   Object.values(connections).forEach(c => {
+    if (c.isHostView) {
+      c.conn.send({ type: 'gameStart', allTeamNames: allTeamNamesArr, allScores: allScoresArr });
+      return;
+    }
     const teamName = c.team >= 0 ? teams[c.team]?.name : 'Unassigned';
     c.conn.send({
       type: 'gameStart', yourTeam: c.team, teamName,
@@ -1551,8 +1889,14 @@ function buildScoreboard() {
   skipBtn.textContent = 'Skip to Scores';
   skipBtn.style.fontSize = '0.75rem';
   skipBtn.onclick = () => { if (confirm('End the game and show final scores?')) showGameOver(); };
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-outline btn-small';
+  addBtn.textContent = '+ Players';
+  addBtn.style.fontSize = '0.75rem';
+  addBtn.onclick = showAddPlayers;
   btnGroup.appendChild(fjBtn);
   btnGroup.appendChild(skipBtn);
+  btnGroup.appendChild(addBtn);
   sb.appendChild(btnGroup);
 }
 
@@ -1635,6 +1979,7 @@ function showQuestion() {
   playReveal();
 
   broadcast({ type: 'question', text: currentQuestion.q, category: currentCategory, value: currentValue });
+  broadcastToHostViewers({ type: 'hostQuestion', text: currentQuestion.q, answer: currentQuestion.a, category: currentCategory, value: currentValue });
 }
 
 function openBuzzer() {
@@ -1847,7 +2192,8 @@ function startFinalJeopardy() {
   finalWagers = {};
   finalAnswers = {};
 
-  broadcast({ type: 'finalStart', category: activeFinalJeopardy.category });
+  broadcast({ type: 'finalStart', category: activeFinalJeopardy.category, scores: teams.map(t => t.score), teamNames: teams.map(t => t.name) });
+  broadcastToHostViewers({ type: 'hostFinalStart', category: activeFinalJeopardy.category, answer: activeFinalJeopardy.a });
 
   const phase = document.getElementById('fj-phase');
   phase.innerHTML = `
@@ -1876,6 +2222,7 @@ function showFinalQuestion() {
   }
 
   broadcast({ type: 'finalQuestion', text: activeFinalJeopardy.q });
+  broadcastToHostViewers({ type: 'hostFinalQuestion', text: activeFinalJeopardy.q, answer: activeFinalJeopardy.a });
 
   const phase = document.getElementById('fj-phase');
   phase.innerHTML = `
@@ -1966,6 +2313,7 @@ function judgeFinal(teamIndex, correct, wager) {
 }
 
 function showGameOver() {
+  gameInProgress = false;
   const sorted = [...teams].sort((a, b) => b.score - a.score);
   const standingsEl = document.getElementById('final-standings');
   const medals = ['&#x1f3c6;', '&#x1f948;', '&#x1f949;'];
@@ -2176,6 +2524,7 @@ function endTutorial() {
   lastCorrectTeam = -1;
   lastScoreChange = null;
   questionsRemaining = 30;
+  gameInProgress = false;
   // Clean up peer/connections safely
   Object.values(connections).forEach(c => { try { c.conn.close(); } catch(e) {} });
   connections = {};
@@ -2191,7 +2540,13 @@ function endTutorial() {
 // ========================================================
 (function init() {
   const params = new URLSearchParams(location.search);
-  if (params.get('join')) showJoin();
+  if (params.get('hostview')) {
+    showScreen('host-phone');
+    document.getElementById('hp-content').innerHTML = '<div class="hp-waiting">Connecting to game...</div>';
+    joinAsHostViewer(params.get('hostview').toUpperCase());
+  } else if (params.get('join')) {
+    showJoin();
+  }
 })();
 </script>
 </body>
