@@ -644,355 +644,65 @@ html, body {
 // ========================================================
 const QUESTION_POOL = [
   {
-    name: "Baby Firsts",
-    questions: [
-      // --- easy ($200) ---
-      { q: "What exciting milestone usually happens around a baby's first birthday?", a: "Their first steps (or first word!)" },
-      { q: "At what age do most babies say their first word?", a: "Around 12 months" },
-      { q: "What is typically a baby's first solid food?", a: "Baby cereal (like rice cereal) or pureed fruits/veggies" },
-      { q: "What are usually a baby's first two words?", a: "Mama and Dada" },
-      { q: "What do babies do before they can crawl?", a: "Roll over and scoot" },
-      // --- medium-easy ($400) ---
-      { q: "At what age do most babies take their first steps?", a: "9 to 15 months (12 months is average)" },
-      { q: "At what age do most babies first sit up without support?", a: "Around 6 months" },
-      { q: "When do most babies start to crawl?", a: "7 to 10 months" },
-      { q: "At what age do most babies start clapping their hands?", a: "Around 9 months" },
-      { q: "When do babies usually start teething?", a: "Around 6 months" },
-      // --- medium ($600) ---
-      { q: "At what age do babies typically wave 'bye-bye' for the first time?", a: "Around 9 to 12 months" },
-      { q: "At what age do most babies first smile at you (not just a reflex)?", a: "Around 6 to 8 weeks" },
-      { q: "Around what age do most babies start to roll over?", a: "Around 4 to 6 months" },
-      { q: "When do babies usually say their first two-word sentence?", a: "Around 18 to 24 months" },
-      { q: "At what age do babies start playing peek-a-boo?", a: "Around 6 to 9 months" },
-      // --- medium-hard ($800) ---
-      { q: "Can babies recognize their mother's voice before being born?", a: "Yes — they can hear and recognize it in the womb (third trimester)" },
-      { q: "Are a baby's first teeth usually on the top or bottom?", a: "Bottom (the two lower front teeth come first)" },
-      { q: "At what age do babies usually start pointing at things they want?", a: "Around 9 to 12 months" },
-      { q: "When do most babies start sleeping through the night?", a: "Around 3 to 6 months (but every baby is different!)" },
-      { q: "At what age can most babies hold a spoon and try to feed themselves?", a: "Around 12 to 15 months" },
-      // --- hard ($1000) ---
-      { q: "What is believed to be among the first colors a baby can see (besides black and white)?", a: "Red — high-contrast and long-wavelength colors are distinguished earliest" },
-      { q: "About how far can a newborn see clearly?", a: "8 to 12 inches (about the distance to a parent's face while feeding)" },
-      { q: "True or false: newborns are born with the instinct to grip your finger tightly.", a: "True — it's called the grasp reflex, and it's adorably strong!" },
-      { q: "At what age do babies first understand the word 'no'?", a: "Around 8 to 10 months (though they won't always listen!)" },
-      { q: "True or false: newborns can recognize their mother's face within hours of birth.", a: "True — studies show babies prefer their mother's face very shortly after birth" },
-    ]
-  },
-  {
-    name: "Bump Watch",
-    questions: [
-      // --- easy ($200) ---
-      { q: "How many weeks is a full-term pregnancy?", a: "40 weeks" },
-      { q: "How many trimesters does pregnancy have?", a: "Three (about 13 weeks each)" },
-      { q: "What is a 'baby bump'?", a: "The visible belly that grows during pregnancy" },
-      { q: "What is a 'gender reveal'?", a: "A celebration where parents share whether the baby is a boy or girl" },
-      { q: "True or false: babies can hear sounds from inside the womb.", a: "True — starting around 18 weeks, they can hear voices and music!" },
-      // --- medium-easy ($400) ---
-      { q: "At 12 weeks, a baby in the womb is about the size of what fruit?", a: "A lime (about 2 inches long)" },
-      { q: "At 20 weeks (halfway!), the baby is about the size of what?", a: "A banana (about 10 inches)" },
-      { q: "True or false: pregnant women often develop a much stronger sense of smell.", a: "True — many moms-to-be notice it right away!" },
-      { q: "True or false: by the third trimester, a baby can recognize its mother's voice.", a: "True — they can hear and respond to familiar voices from inside the womb!" },
-      { q: "What is a 'babymoon'?", a: "A vacation expecting parents take before the baby arrives" },
-      // --- medium ($600) ---
-      { q: "True or false: babies get the hiccups in the womb.", a: "True — moms can feel the little rhythmic jumps!" },
-      { q: "Around what month can an expecting mom first feel the baby kick?", a: "Around 4 to 5 months (16 to 25 weeks)" },
-      { q: "True or false: many pregnant women get thicker, shinier hair during pregnancy.", a: "True — thanks to pregnancy hormones!" },
-      { q: "What is 'nesting' during pregnancy?", a: "The urge to clean, organize, and prepare the home — often kicks in during the third trimester" },
-      { q: "What is a 'push present'?", a: "A gift given to a new mom to celebrate the arrival of her baby" },
-      // --- medium-hard ($800) ---
-      { q: "At what week is a pregnancy considered 'full term'?", a: "39 weeks" },
-      { q: "True or false: babies in the womb can taste what their mother eats.", a: "True — flavor molecules pass through the amniotic fluid!" },
-      { q: "What is 'quickening'?", a: "The first time a mom feels the baby move (usually around 16 to 25 weeks)" },
-      { q: "True or false: a baby's fingerprints are fully formed before birth.", a: "True — they're set by about 23 weeks!" },
-      { q: "By the end of pregnancy, about how much does the average baby weigh?", a: "About 7 to 8 pounds" },
-      // --- hard ($1000) ---
-      { q: "At about what week does a baby in the womb first open its eyes?", a: "Around 26 to 28 weeks" },
-      { q: "True or false: babies in the womb practice breathing movements before birth.", a: "True — it helps their lungs develop!" },
-      { q: "By the end of pregnancy, a woman's uterus expands to roughly how many times its original size?", a: "About 500 times" },
-      { q: "True or false: babies have been seen smiling during ultrasounds.", a: "True — 4D ultrasounds have captured it!" },
-      { q: "At about what week can a baby in the womb start dreaming (REM sleep)?", a: "Around 28 weeks" },
-    ]
-  },
-  {
     name: "Lullaby Lyrics",
     questions: [
-      // --- easy ($200) ---
-      { q: "Complete the lyric: 'Twinkle, twinkle, little ___'", a: "Star" },
-      { q: "Complete: 'Mary had a little lamb, its fleece was white as ___'", a: "Snow" },
-      { q: "What does the itsy-bitsy spider climb up?", a: "The water spout" },
-      { q: "Complete: 'Row, row, row your boat, gently down the ___'", a: "Stream" },
-      { q: "Complete: 'Baa, baa, black sheep, have you any ___?'", a: "Wool" },
-      // --- medium-easy ($400) ---
       { q: "Complete: 'Rock-a-bye baby, on the ___'", a: "Treetop" },
-      { q: "What nursery rhyme character 'sat on a wall' and 'had a great fall'?", a: "Humpty Dumpty" },
-      { q: "Complete: 'Pat-a-cake, pat-a-cake, baker's ___'", a: "Man" },
-      { q: "In 'Old MacDonald Had a Farm,' what sound does a cow make?", a: "Moo moo" },
-      { q: "Complete: 'Jack be nimble, Jack be quick, Jack jump over the ___'", a: "Candlestick" },
-      // --- medium ($600) ---
       { q: "In 'Hush Little Baby,' what is the first thing Mama is going to buy?", a: "A mockingbird" },
       { q: "In 'Hey Diddle Diddle,' what jumped over the moon?", a: "The cow" },
-      { q: "What did Little Bo Peep lose?", a: "Her sheep" },
-      { q: "How many men did the Grand Old Duke of York have?", a: "Ten thousand" },
-      { q: "In 'Hickory Dickory Dock,' what ran up the clock?", a: "The mouse" },
-      // --- medium-hard ($800) ---
-      { q: "In 'Jack and Jill,' what did Jack break when he fell down?", a: "His crown (head)" },
-      { q: "Complete: 'Old Mother Hubbard went to the cupboard to fetch her poor dog a ___'", a: "Bone" },
-      { q: "In 'This Little Piggy,' what did the first little piggy do?", a: "Went to market" },
       { q: "In 'Sing a Song of Sixpence,' what was baked in the pie?", a: "Four and twenty blackbirds" },
-      { q: "What does Little Miss Muffet sit on?", a: "A tuffet" },
-      // --- hard ($1000) ---
-      { q: "In 'Hush Little Baby,' what does Mama buy if the looking glass gets broke?", a: "A billy goat" },
-      { q: "What is the second line of 'Twinkle, Twinkle, Little Star'?", a: "How I wonder what you are" },
-      { q: "In 'London Bridge Is Falling Down,' what material finally holds the bridge up (in the most common version)?", a: "Gold and silver" },
       { q: "In 'Rub-A-Dub-Dub,' what three men are in the tub?", a: "The butcher, the baker, the candlestick maker" },
-      { q: "In 'This Little Piggy,' what does the last little piggy do?", a: "Cries 'wee wee wee' all the way home" },
-    ]
-  },
-  {
-    name: "Guess the Price",
-    questions: [
-      // --- easy ($200) ---
-      { q: "Roughly how much does a typical pack of diapers (30-count) cost?", a: "$10 to $13" },
-      { q: "About how much does a basic baby monitor cost?", a: "$30 to $70" },
-      { q: "About how much does a pack of baby wipes cost?", a: "$3 to $6" },
-      { q: "About how much does a baby bottle cost?", a: "$5 to $15" },
-      { q: "About how much does a basic baby onesie cost?", a: "$5 to $10" },
-      // --- medium-easy ($400) ---
-      { q: "About how much does a typical baby stroller cost?", a: "$100 to $350" },
-      { q: "What is the average cost of a new baby car seat?", a: "$100 to $250" },
-      { q: "About how much does a typical high chair cost?", a: "$50 to $200" },
-      { q: "About how much does a baby swing or bouncer cost?", a: "$50 to $150" },
-      { q: "About how much does a diaper bag cost?", a: "$30 to $100" },
-      // --- medium ($600) ---
-      { q: "How many diapers does a baby use in the first year on average?", a: "About 2,500 to 3,000" },
-      { q: "About how much does a popular baby sound machine (like a Hatch) cost?", a: "$30 to $70" },
-      { q: "About how much does the average crib cost?", a: "$150 to $500" },
-      { q: "How many baby outfits does the average baby go through in a single day?", a: "2 to 3 (babies are messy little cuties!)" },
-      { q: "About how much does a baby activity gym (play mat with dangling toys) cost?", a: "$30 to $80" },
-      // --- medium-hard ($800) ---
-      { q: "About how much does a popular baby video monitor (like Nanit or Owlet) cost?", a: "$150 to $400" },
-      { q: "About how much does a baby bathtub cost?", a: "$15 to $50" },
-      { q: "About how much does a popular baby bouncer or swing cost?", a: "$50 to $200" },
-      { q: "About how many wipes does a baby go through in the first year?", a: "About 8,000 to 10,000" },
-      { q: "How much does a professional newborn photo session typically cost?", a: "$200 to $500" },
-      // --- hard ($1000) ---
-      { q: "About how much does a convertible car seat (infant to toddler) cost?", a: "$150 to $350" },
-      { q: "How many clothing sizes does a baby typically go through in the first year?", a: "About 5 to 7 sizes (they grow so fast!)" },
-      { q: "What is the average potty training age for toddlers in the U.S.?", a: "Around 27 months (just over 2 years old)" },
-      { q: "About how old are most kids when they finish potty training?", a: "Around 2.5 to 3 years old" },
-      { q: "About how much does a set of baby bottles (like Dr. Brown's, pack of 4) cost?", a: "$20 to $40" },
-    ]
-  },
-  {
-    name: "Baby Life",
-    questions: [
-      // --- easy ($200) ---
-      { q: "What is 'swaddling'?", a: "Wrapping a baby snugly in a blanket to mimic the cozy womb" },
-      { q: "What is a 'onesie'?", a: "A one-piece bodysuit that snaps at the bottom — a baby wardrobe staple" },
-      { q: "About how many hours a day does a newborn sleep?", a: "14 to 17 hours" },
-      { q: "What does 'tummy time' help a baby develop?", a: "Neck and upper body strength" },
-      { q: "What is a baby 'lovey'?", a: "A small comfort object like a stuffed animal or soft blanket that helps baby feel safe" },
-      // --- medium-easy ($400) ---
-      { q: "What is 'skin-to-skin' contact?", a: "Placing a newborn on a parent's bare chest for warmth and bonding" },
-      { q: "How often do newborns typically eat?", a: "Every 2 to 3 hours (they have tiny tummies!)" },
-      { q: "What is a 'baby sprinkle'?", a: "A smaller, more casual celebration — usually for a second or third baby" },
-      { q: "What is 'babywearing'?", a: "Carrying a baby in a sling or wrap — cozy for baby and hands-free for parents!" },
-      { q: "At about what age do babies start eating solid foods?", a: "Around 6 months" },
-      // --- medium ($600) ---
-      { q: "Around what age do babies start sleeping longer stretches at night?", a: "Around 3 to 4 months" },
-      { q: "What is a 'milestone' in baby terms?", a: "A key moment in development — like first smile, first word, or first steps" },
-      { q: "What does 'baby-led weaning' mean?", a: "Letting the baby self-feed soft finger foods instead of being spoon-fed purees" },
-      { q: "At about what age do babies start laughing?", a: "Around 3 to 4 months" },
-      { q: "What is a 'Sip and See'?", a: "A post-birth gathering where friends come to meet the new baby" },
-      // --- medium-hard ($800) ---
-      { q: "What does 'baby-proofing' a home typically involve?", a: "Outlet covers, cabinet locks, baby gates, and securing furniture to walls" },
-      { q: "At what age do most babies start recognizing their own name?", a: "Around 5 to 7 months" },
-      { q: "What is a 'sleep sack'?", a: "A wearable blanket that keeps baby warm and cozy while sleeping" },
-      { q: "At about what age do babies start waving bye-bye?", a: "Around 9 to 12 months" },
-      { q: "What is a 'baby registry'?", a: "A wish list of items that expecting parents create for friends and family to gift" },
-      // --- hard ($1000) ---
-      { q: "What is the '5 S's' method for soothing a baby?", a: "Swaddle, Side/Stomach hold, Shush, Swing, Suck" },
-      { q: "What are 'growth spurts' in babies?", a: "Periods of rapid growth when babies eat more and may be fussier — usually at 2-3 weeks, 6 weeks, and 3 months" },
-      { q: "What is a 'baby book'?", a: "A keepsake journal where parents record milestones, firsts, and memories" },
-      { q: "At about what age do babies typically say their first real word?", a: "Around 12 months" },
-      { q: "What classic Dr. Seuss book is a traditional baby shower and graduation gift?", a: "Oh, the Places You'll Go!" },
-    ]
-  },
-  {
-    name: "Old Wives' Tales",
-    questions: [
-      // --- easy ($200) ---
-      { q: "If you're carrying high, is it supposedly a boy or a girl?", a: "A girl" },
-      { q: "According to folklore, craving salty food during pregnancy means what?", a: "You're having a boy" },
-      { q: "What food is a pregnant woman told to eat to make the baby come sooner?", a: "Spicy food" },
-      { q: "According to old wives' tales, what does craving sweets during pregnancy predict?", a: "A girl" },
-      { q: "What activity is said to help induce labor — walking, sleeping, or singing?", a: "Walking" },
-      // --- medium-easy ($400) ---
-      { q: "What item dangled over a pregnant belly is said to predict the baby's gender?", a: "A wedding ring on a string" },
-      { q: "What does heartburn during pregnancy supposedly predict about the baby?", a: "The baby will have a lot of hair" },
-      { q: "According to old wives' tales, what does cold feet during pregnancy mean?", a: "You're having a boy" },
-      { q: "If a pregnant woman's belly looks like a basketball, is it supposedly a boy or girl?", a: "A boy (wide/round belly = girl)" },
-      { q: "According to an old wives' tale, what does it mean if a pregnant woman has a round belly?", a: "She's having a girl (a basketball-shaped belly supposedly means a boy)" },
-      // --- medium ($600) ---
-      { q: "According to old wives' tales, what does a fast fetal heart rate (140+) predict?", a: "A girl" },
-      { q: "If a pregnant woman's skin is glowing, is it supposedly a boy or a girl?", a: "A boy (according to the old tale)" },
-      { q: "If the baby's father gains weight during the pregnancy, what does that predict?", a: "A girl" },
-      { q: "According to old wives' tales, what does it mean if you carry low?", a: "You're having a boy" },
-      { q: "According to an old wives' tale, what does it predict if the mom-to-be's hair gets thicker and shinier?", a: "She's having a boy" },
-      // --- medium-hard ($800) ---
-      { q: "According to folklore, what does it mean if a pregnant woman's hair gets thicker and shinier?", a: "She's having a boy (dull hair supposedly means a girl)" },
-      { q: "According to folklore, what does it mean if you dream about a baby during pregnancy?", a: "It predicts the baby's gender (girl dream = boy, boy dream = girl)" },
-      { q: "According to folklore, what does the shape of a pregnant woman's face predict?", a: "A rounder face means a girl; no change means a boy" },
-      { q: "According to folklore, what can looking at a beautiful painting during pregnancy do?", a: "Make the baby more beautiful (a common belief in many cultures)" },
-      { q: "According to an old wives' tale, what does it mean if a pregnant woman is craving fruit?", a: "She's having a girl" },
-      // --- hard ($1000) ---
-      { q: "According to an old wives' tale, what does it mean if a pregnant woman craves sour foods?", a: "She's having a boy" },
-      { q: "What old wives' tale about pregnancy and the moon is still widely believed today?", a: "That more babies are born during a full moon (studies say it's not true)" },
-      { q: "According to folklore, what does it mean if a pregnant woman's nose gets wider?", a: "She's having a boy" },
-      { q: "According to an old wives' tale, what does a pregnant woman's preference for the left side of the bed predict?", a: "A boy (right side supposedly means a girl)" },
-      { q: "According to superstition, what does it mean if a toddler walks up to a pregnant woman and seems interested in her belly?", a: "The baby will be the same gender as the toddler" },
     ]
   },
   {
     name: "Baby Animals",
     questions: [
-      // --- easy ($200) ---
-      { q: "What is a baby dog called?", a: "A puppy" },
-      { q: "What is a baby cat called?", a: "A kitten" },
-      { q: "What is a baby chicken called?", a: "A chick" },
-      { q: "What is a baby cow called?", a: "A calf" },
-      { q: "What is a baby pig called?", a: "A piglet" },
-      // --- medium-easy ($400) ---
       { q: "What is a baby deer called?", a: "A fawn" },
-      { q: "What is a baby sheep called?", a: "A lamb" },
-      { q: "What is a baby bear called?", a: "A cub" },
-      { q: "What is a baby horse called?", a: "A foal" },
-      { q: "What is a baby duck called?", a: "A duckling" },
-      // --- medium ($600) ---
       { q: "What is a baby kangaroo called?", a: "A joey" },
-      { q: "What is a baby frog called?", a: "A tadpole" },
-      { q: "What is a baby goat called? (Hint: it's also a word for a child!)", a: "A kid" },
-      { q: "What is a baby eagle called?", a: "An eaglet" },
-      { q: "What is a baby whale called?", a: "A calf" },
-      // --- medium-hard ($800) ---
       { q: "What is a baby swan called?", a: "A cygnet" },
-      { q: "What is a baby owl called?", a: "An owlet" },
-      { q: "What is a baby seal called?", a: "A pup" },
       { q: "What is a baby fox called?", a: "A kit (or cub)" },
-      { q: "What is a baby rabbit called?", a: "A kitten (or kit)" },
-      // --- hard ($1000) ---
-      { q: "What is a baby platypus informally called? (Hint: it rhymes with 'smuggle')", a: "A puggle (informal — also used for baby echidnas)" },
-      { q: "What is a baby hare called?", a: "A leveret" },
-      { q: "What is a baby pigeon called?", a: "A squab" },
       { q: "What is a baby porcupine called?", a: "A porcupette" },
-      { q: "What is a baby eel called?", a: "An elver" },
     ]
   },
   {
     name: "Babies on Screen",
     questions: [
-      // --- easy ($200) ---
-      { q: "In 'The Lion King,' what type of animal is baby Simba?", a: "A lion cub" },
-      { q: "What animated movie is about a clownfish dad searching for his lost son?", a: "Finding Nemo" },
-      { q: "What Disney movie features a baby elephant who can fly?", a: "Dumbo" },
-      { q: "What is the name of the baby on 'The Simpsons'?", a: "Maggie Simpson" },
-      { q: "In 'Shrek the Third,' Shrek becomes a dad — what kind of babies does he have?", a: "Ogre babies (triplets!)" },
-      // --- medium-easy ($400) ---
-      { q: "What is the name of the Flintstones' baby daughter?", a: "Pebbles" },
-      { q: "In 'Ice Age,' the heroes protect a human baby — what animal is Manny?", a: "A woolly mammoth" },
-      { q: "What animated movie features a baby who is secretly a boss in a suit?", a: "The Boss Baby" },
-      { q: "In 'Friends,' what do Ross and Rachel name their baby?", a: "Emma" },
-      { q: "What cartoon features a baby named Stewie who is an evil genius?", a: "Family Guy" },
-      // --- medium ($600) ---
+      { q: "In 'The Lion King,' who holds up baby Simba at Pride Rock?", a: "Rafiki" },
+      { q: "In 'Finding Nemo,' what is the name of Nemo's overprotective dad?", a: "Marlin" },
       { q: "What celebrity couple named their daughter Apple?", a: "Gwyneth Paltrow and Chris Martin" },
-      { q: "What is the name of the lead baby in 'Rugrats'?", a: "Tommy Pickles" },
-      { q: "In 'The Incredibles,' what is the baby's name?", a: "Jack-Jack" },
-      { q: "In 'Harry Potter,' who leaves baby Harry on the Dursleys' doorstep?", a: "Dumbledore (with McGonagall and Hagrid)" },
-      { q: "What 2008 movie stars Brad Pitt as a man who is born old and ages in reverse?", a: "The Curious Case of Benjamin Button" },
-      // --- medium-hard ($800) ---
       { q: "What was the name of Prince Harry and Meghan Markle's first baby, born in 2019?", a: "Archie" },
-      { q: "What viral YouTube video of a baby biting his brother's finger became one of the most-viewed videos ever?", a: "Charlie Bit My Finger" },
-      { q: "In the movie 'Storks,' what do storks deliver instead of babies at the start of the film?", a: "Packages (they work for a delivery company)" },
-      { q: "What Disney+ series features a character nicknamed 'Baby Yoda' (later revealed to have a different name)?", a: "The Mandalorian (his real name is Grogu)" },
-      { q: "What reality TV family became famous for having 19 kids?", a: "The Duggars (19 Kids and Counting)" },
-      // --- hard ($1000) ---
-      { q: "The famous 'Gerber Baby' face on Gerber baby food since 1928 was a sketch of what woman?", a: "Ann Turner Cook" },
       { q: "What iconic 1990s rock album features a baby on its cover — one of the most recognized album covers ever?", a: "Nirvana's 'Nevermind' (1991)" },
-      { q: "What classic 1989 comedy stars John Travolta and has a talking baby narrated by Bruce Willis?", a: "Look Who's Talking" },
-      { q: "In the TV show 'Full House,' what is the name of the youngest Tanner daughter?", a: "Michelle (played by Mary-Kate and Ashley Olsen)" },
-      { q: "What 1988 comedy features three bachelor roommates unexpectedly caring for a baby left on their doorstep?", a: "Three Men and a Baby" },
     ]
   },
   {
     name: "Then vs. Now",
     questions: [
-      // --- easy ($200) ---
-      { q: "True or false: the advice on the best sleep position for babies has completely changed since the 1970s.", a: "True — back then it was tummy-down, now it's 'back is best!'" },
       { q: "What decade did disposable diapers become widely available?", a: "The 1960s (Pampers launched in 1961)" },
-      { q: "True or false: car seats for babies weren't required by law in all 50 U.S. states until the 1980s.", a: "True — the last states passed laws by 1985" },
-      { q: "Before baby monitors existed, how did parents check on a sleeping baby?", a: "They just kept walking in to check (monitors didn't become common until the 1990s)" },
-      { q: "What classic baby toy, invented in 1940, is a stack of colorful rings on a rocking base?", a: "The Fisher-Price Rock-a-Stack" },
-      // --- medium-easy ($400) ---
-      { q: "Before ultrasounds were common, how did parents find out their baby's gender?", a: "At birth — it was a surprise! (Ultrasound gender reveals became common in the 1980s)" },
-      { q: "What classic parenting book, first published in 1946, guided an entire generation of American parents?", a: "Dr. Spock's Baby and Child Care" },
-      { q: "What did parents use before disposable baby wipes became popular in the 1990s?", a: "Washcloths and water" },
-      { q: "What did parents use before disposable baby wipes became popular in the 1990s?", a: "Washcloths and water" },
-      { q: "The first home pregnancy test was sold in the U.S. in what decade?", a: "The 1970s (1977, and it took 2 hours to get results!)" },
-      // --- medium ($600) ---
-      { q: "What parenting practice, common in the 1950s-70s, involved feeding babies on a strict every-4-hour schedule?", a: "Scheduled feeding (vs. today's 'on-demand' feeding)" },
-      { q: "What was the #1 most popular baby name for boys in the U.S. throughout the 1950s-90s?", a: "Michael (it held the #1 spot for decades)" },
-      { q: "What decade did 'gender reveal parties' first become a trend?", a: "The 2000s (the first viral gender reveal was a blog post in 2008)" },
-      { q: "Before video baby monitors, what 1990s invention let parents hear their baby from another room?", a: "Audio-only baby monitors (basically walkie-talkies for nurseries)" },
-      { q: "What item, now considered essential, was NOT included in most car seats until the 1990s?", a: "A 5-point harness (earlier seats were basically just booster seats with a lap bar)" },
-      // --- medium-hard ($800) ---
-      { q: "In the 1960s-70s, it was common for fathers to do what during their child's birth?", a: "Wait in the waiting room — dads in the delivery room didn't become common until the 1980s" },
-      { q: "What baby product, invented in 1999, vibrates and swings to mimic a car ride and help babies sleep?", a: "The baby swing (modern versions like the Mamaroo launched in 2010)" },
-      { q: "What decade did the 'baby-on-board' car signs become a huge trend?", a: "The 1980s (invented in 1984, they were everywhere by 1985)" },
-      { q: "What nursery-decorating trend became huge on Pinterest and Instagram in the 2010s?", a: "Nursery wall decals and letter boards with cute baby quotes" },
-      { q: "What toy caused absolute pandemonium in toy stores during the 1996 holiday season?", a: "Tickle Me Elmo (parents were literally fighting over them!)" },
-      // --- hard ($1000) ---
-      { q: "What was the #1 most popular girl's baby name in the U.S. in the 1990s?", a: "Jessica" },
-      { q: "What 2002 parenting book introduced the '5 S's' method for soothing fussy babies?", a: "The Happiest Baby on the Block by Dr. Harvey Karp" },
-      { q: "In the 1950s, what common household product was used to sterilize baby bottles?", a: "Boiling water on the stove (electric sterilizers came much later)" },
-      { q: "What popular baby name tracker website, launched in 2003, changed how parents picked names?", a: "Nameberry (the SSA baby names database also went online around that time)" },
-      { q: "What decade did 'helicopter parenting' become a widely used term?", a: "The 2000s (coined earlier by Foster Cline in 1990, but went mainstream in the 2000s)" },
+      { q: "Before ultrasounds were common, how did parents find out their baby's gender?", a: "At birth — it was a surprise!" },
+      { q: "What was the #1 baby name for boys in the U.S. throughout the 1950s-90s?", a: "Michael (it held the #1 spot for decades)" },
+      { q: "What decade did the 'baby-on-board' car signs become a huge trend?", a: "The 1980s (invented in 1984, everywhere by 1985)" },
+      { q: "What was the #1 girl's baby name in the U.S. in the 1990s?", a: "Jessica" },
     ]
   },
   {
-    name: "Tiny Humans, Big Facts",
+    name: "Old Wives' Tales",
     questions: [
-      // --- easy ($200) ---
-      { q: "True or false: babies are born with more bones than adults.", a: "True — about 300 bones vs. 206 in adults (they fuse together as they grow)" },
-      { q: "About how much does the average newborn weigh?", a: "About 7 to 8 pounds" },
-      { q: "True or false: newborns can only see in black and white at first.", a: "Mostly true — they see high-contrast patterns first, full color develops over months" },
-      { q: "Do newborns sleep more during the day or at night?", a: "They don't know the difference — they sleep in short stretches around the clock" },
-      { q: "What fraction of their time do newborns spend sleeping — about half, two-thirds, or three-quarters?", a: "About two-thirds (14-17 hours out of 24)" },
-      // --- medium-easy ($400) ---
-      { q: "About how long is the average newborn from head to toe?", a: "About 19 to 21 inches (50 cm)" },
-      { q: "True or false: babies are born with the ability to taste sweet, sour, and bitter.", a: "True — they prefer sweet tastes from birth" },
-      { q: "How many diapers does the average baby go through per day?", a: "8 to 12 per day for newborns" },
-      { q: "True or false: a baby's head is about one-quarter of their total body length.", a: "True — adults' heads are about one-seventh" },
-      { q: "About how much weight does a baby typically double by — 3 months, 5 months, or 9 months?", a: "About 5 months (they triple it by age 1)" },
-      // --- medium ($600) ---
-      { q: "True or false: newborns cry without producing actual tears.", a: "True — visible tears while crying typically don't appear until about 1 to 3 months old" },
-      { q: "Do newborns have more, fewer, or the same number of taste buds as adults?", a: "More — they have taste buds across their tongue, palate, and throat that reduce as they grow" },
-      { q: "What is the soft spot on top of a baby's head called?", a: "A fontanelle" },
-      { q: "A newborn's stomach on day one is about the size of what small object?", a: "A cherry or a marble (just 5-7 mL)" },
-      { q: "True or false: babies can recognize their mother's smell within days of being born.", a: "True — studies show they can identify mom by smell within about 3 days" },
-      // --- medium-hard ($800) ---
-      { q: "What percentage of babies are born on their actual due date — 4%, 14%, or 40%?", a: "About 4% (most arrive within 2 weeks of the due date)" },
-      { q: "A newborn's heart beats about how many times per minute — 70, 120, or 200?", a: "About 120 to 160 (nearly double an adult's resting rate)" },
-      { q: "True or false: a newborn baby has about 300 bones, nearly 100 more than an adult.", a: "True — many bones fuse together as the baby grows, leaving adults with 206" },
-      { q: "Babies are born with cartilage instead of bone for these body parts, which don't fully harden until age 3-5.", a: "Kneecaps (they're there, just not bone yet!)" },
-      { q: "True or false: a baby's laugh is one of the last social skills they develop, usually not appearing until 3-4 months.", a: "True — smiles come first at 6-8 weeks, but real laughter takes longer" },
-      // --- hard ($1000) ---
-      { q: "True or false: newborns naturally know how to breathe and eat at the same time.", a: "True — they're born with this amazing ability! (Adults actually can't do this.)" },
-      { q: "A newborn's grip is strong enough to support approximately how much weight?", a: "Their entire body weight (the grasp reflex is incredibly strong)" },
-      { q: "Babies are born speaking a 'universal language' — they can distinguish all 800 speech sounds on Earth until about what age?", a: "About 10 months (then they specialize in their native language)" },
-      { q: "What is the most common birthday in the United States?", a: "September 9th" },
-      { q: "A baby's brain grows to what percentage of its adult size by age 3?", a: "About 80% (and 90% by age 5)" },
+      { q: "According to folklore, craving salty food during pregnancy means what?", a: "You're having a boy" },
+      { q: "What does heartburn during pregnancy supposedly predict about the baby?", a: "The baby will have a lot of hair" },
+      { q: "According to old wives' tales, what does a fast fetal heart rate (over 140 bpm) predict?", a: "A girl" },
+      { q: "According to folklore, what does it mean if you dream about a baby during pregnancy?", a: "It predicts the opposite gender (dream of a girl = boy, dream of a boy = girl)" },
+      { q: "What old wives' tale about pregnancy and the moon is still widely believed today?", a: "That more babies are born during a full moon (studies say it's not true)" },
     ]
-  }
+  },
+  {
+    name: "Bump Watch",
+    questions: [
+      { q: "How many weeks is a full-term pregnancy?", a: "40 weeks" },
+      { q: "At 12 weeks, a baby in the womb is about the size of what fruit?", a: "A lime (about 2 inches long)" },
+      { q: "Around what month can an expecting mom first feel the baby kick?", a: "Around 4 to 5 months" },
+      { q: "True or false: babies in the womb can taste what their mother eats.", a: "True — flavor molecules pass through the amniotic fluid!" },
+      { q: "At about what week does a baby in the womb first open its eyes?", a: "Around 26 to 28 weeks" },
+    ]
+  },
 ];
 
 const FINAL_JEOPARDY_POOL = [
@@ -1000,7 +710,7 @@ const FINAL_JEOPARDY_POOL = [
 ];
 
 const VALUES = [200, 400, 600, 800, 1000];
-const QUESTIONS_PER_TIER = 5;
+const QUESTIONS_PER_TIER = 1;
 
 // Active game board — built from pools at game start
 let gameBoard = [];
